@@ -74,8 +74,8 @@
       <div id="message" class="info">
         <strong>Instrucciones:</strong>
         <ul>
-          <li>Al iniciar, el examen se abrirá en pantalla completa.</li>
-          <li>No debes minimizar la ventana, cambiar de pestaña ni salir de pantalla completa.</li>
+          <li>Al iniciar, el examen aparecerá en esta página.</li>
+          <li>No debes minimizar la ventana ni cambiar de pestaña.</li>
           <li>La <strong>primera infracción</strong> mostrará un mensaje y pedirá un código del profesor.</li>
           <li>Si el código es correcto, podrás continuar una sola vez.</li>
           <li>Cualquier infracción después de eso cancelará el examen.</li>
@@ -89,7 +89,7 @@
 
       <div id="exam-container" class="hidden">
         <p class="center">
-          <strong>Examen en curso.</strong> No salgas de esta pantalla.
+          <strong>Examen en curso.</strong> No salgas de esta pestaña ni minimices la ventana.
         </p>
         <!-- AQUÍ VA TU FORMULARIO DE GOOGLE FORMS -->
         <iframe
@@ -111,7 +111,7 @@
 
     let examIsActive = false;
     let examCanceled = false;
-    let teacherCodeUsed = false;  // true cuando ya usaste el código una vez
+    let teacherCodeUsed = false;  // true cuando ya se usó el código una vez
 
     const startBtn = document.getElementById('start-btn');
     const introDiv = document.getElementById('intro');
@@ -126,31 +126,6 @@
       messageDiv.id = 'message';
     }
 
-    function goFullscreen() {
-      const docEl = document.documentElement;
-      if (docEl.requestFullscreen) {
-        docEl.requestFullscreen();
-      } else if (docEl.mozRequestFullScreen) {
-        docEl.mozRequestFullScreen();
-      } else if (docEl.webkitRequestFullscreen) {
-        docEl.webkitRequestFullscreen();
-      } else if (docEl.msRequestFullscreen) {
-        docEl.msRequestFullscreen();
-      }
-    }
-
-    function exitFullscreen() {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.mozCancelFullScreen) {
-        document.mozCancelFullScreen();
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      } else if (document.msExitFullscreen) {
-        document.msExitFullscreen();
-      }
-    }
-
     function startExam() {
       examIsActive = true;
       examCanceled = false;
@@ -159,18 +134,16 @@
       introDiv.classList.add('hidden');
       examContainer.classList.remove('hidden');
       showMessage(
-        '<strong>Examen iniciado.</strong> Permanece en esta pantalla. ' +
-        'La primera infracción pedirá un código, después de eso cualquier otra infracción cancelará el examen.',
+        '<strong>Examen iniciado.</strong> Permanece en esta pestaña. ' +
+        'La primera infracción pedirá un código; después de eso, cualquier otra infracción cancelará el examen.',
         'info'
       );
-      goFullscreen();
     }
 
     function cancelExam(reason) {
       if (!examIsActive || examCanceled) return;
       examCanceled = true;
       examIsActive = false;
-      exitFullscreen();
 
       // Ocultar el formulario
       examFrame.classList.add('hidden');
@@ -181,7 +154,7 @@
     function handleInfraction(reason) {
       if (!examIsActive || examCanceled) return;
 
-      // Si aún no se ha usado el código -> primera infracción
+      // Primera vez (no se ha usado código)
       if (!teacherCodeUsed) {
         const code = prompt(
           'Se detectó una infracción:\n\n' + reason +
@@ -194,22 +167,20 @@
           alert('Código correcto. Puedes continuar, pero cualquier nueva infracción cancelará el examen.');
           showMessage(
             '<strong>Advertencia:</strong> Ya se detectó una infracción. ' +
-            'Si vuelves a salir de la pantalla, el examen será cancelado.',
+            'Si vuelves a salir de la pestaña o minimizar, el examen será cancelado.',
             'error'
           );
-          // Reafirmar pantalla completa por si salió:
-          goFullscreen();
-          return; // NO cancelar el examen en esta primera vez
+          return; // NO cancelamos en esta primera vez
         } else {
           cancelExam(reason + ' (código incorrecto o no ingresado).');
         }
       } else {
-        // Ya usó el código una vez -> cualquier otra infracción cancela
+        // Ya usó el código una vez → cualquier otra infracción cancela
         cancelExam(reason + ' (segunda infracción).');
       }
     }
 
-    // Eventos de seguridad
+    // Eventos de seguridad (sin pantalla completa)
     document.addEventListener('visibilitychange', () => {
       if (examIsActive && document.hidden) {
         handleInfraction('La pestaña dejó de estar visible.');
@@ -219,18 +190,6 @@
     window.addEventListener('blur', () => {
       if (examIsActive) {
         handleInfraction('Se detectó que saliste de la ventana del examen.');
-      }
-    });
-
-    document.addEventListener('fullscreenchange', () => {
-      const isFull = !!(
-        document.fullscreenElement ||
-        document.mozFullScreenElement ||
-        document.webkitFullscreenElement ||
-        document.msFullscreenElement
-      );
-      if (examIsActive && !isFull) {
-        handleInfraction('Se detectó que saliste del modo de pantalla completa.');
       }
     });
 
