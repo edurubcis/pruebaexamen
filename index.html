@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Examen Seguro</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    header {
+      background: #222;
+      color: #fff;
+      padding: 10px 20px;
+    }
+    main {
+      padding: 20px;
+    }
+    .hidden {
+      display: none;
+    }
+    .center {
+      text-align: center;
+    }
+    #message {
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+    }
+    #message.error {
+      background: #ffe5e5;
+      color: #b30000;
+    }
+    #message.info {
+      background: #e5f0ff;
+      color: #003366;
+    }
+    #wrapper {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    #exam-frame {
+      width: 100%;
+      height: 80vh;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: none;
+    }
+    #start-btn {
+      background: #007bff;
+      color: white;
+    }
+    #start-btn:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Examen Seguro</h1>
+  </header>
+
+  <main>
+    <div id="wrapper">
+      <div id="message" class="info">
+        <strong>Instrucciones:</strong>
+        <ul>
+          <li>Al iniciar, el examen se abrirá en pantalla completa.</li>
+          <li>No puedes minimizar la ventana, cambiar de pestaña ni salir de pantalla completa.</li>
+          <li>Si lo haces, el examen se cancelará y el formulario desaparecerá.</li>
+        </ul>
+      </div>
+
+      <div id="intro" class="center">
+        <p>Cuando estés listo, haz clic en el botón para iniciar el examen.</p>
+        <button id="start-btn">Iniciar examen</button>
+      </div>
+
+      <div id="exam-container" class="hidden">
+        <p class="center"><strong>Examen en curso. No salgas de esta pantalla.</strong></p>
+        <!-- AQUÍ VA TU FORMULARIO DE GOOGLE FORMS -->
+        <iframe
+          id="exam-frame"
+          src="https://docs.google.com/forms/d/e/1FAIpQLSeiIBCLX_ZMesEVRWFLM-RzCTWkScELdgI1m2ZURg91HGzpSQ/viewform?embedded"
+          frameborder="0"
+          marginheight="0"
+          marginwidth="0"
+        >
+          Cargando…
+        </iframe>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let examIsActive = false;
+    let examCanceled = false;
+
+    const startBtn = document.getElementById('start-btn');
+    const introDiv = document.getElementById('intro');
+    const examContainer = document.getElementById('exam-container');
+    const messageDiv = document.getElementById('message');
+    const examFrame = document.getElementById('exam-frame');
+
+    function showMessage(text, type = 'info') {
+      messageDiv.innerHTML = text;
+      messageDiv.className = '';
+      messageDiv.classList.add(type);
+      messageDiv.id = 'message';
+    }
+
+    function goFullscreen() {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen();
+      } else if (docEl.mozRequestFullScreen) {
+        docEl.mozRequestFullScreen();
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen();
+      }
+    }
+
+    function exitFullscreen() {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    }
+
+    function startExam() {
+      // Iniciar examen
+      examIsActive = true;
+      examCanceled = false;
+      introDiv.classList.add('hidden');
+      examContainer.classList.remove('hidden');
+      showMessage('<strong>Examen iniciado.</strong> Permanece en esta pantalla hasta terminar.', 'info');
+      goFullscreen();
+    }
+
+    function cancelExam(reason) {
+      if (!examIsActive || examCanceled) return;
+      examCanceled = true;
+      examIsActive = false;
+      exitFullscreen();
+
+      // Ocultamos el formulario
+      examFrame.classList.add('hidden');
+      showMessage('<strong>Examen cancelado.</strong> ' + reason, 'error');
+    }
+
+    // Eventos de seguridad
+    document.addEventListener('visibilitychange', () => {
+      if (examIsActive && document.hidden) {
+        cancelExam('Se detectó que la pestaña dejó de estar visible.');
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      if (examIsActive) {
+        cancelExam('Se detectó que saliste de la ventana del examen.');
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      const isFull = !!(
+        document.fullscreenElement ||
+        document.mozFullScreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement
+      );
+      if (examIsActive && !isFull) {
+        cancelExam('Se detectó que saliste del modo de pantalla completa.');
+      }
+    });
+
+    window.addEventListener('beforeunload', (event) => {
+      if (examIsActive && !examCanceled) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    });
+
+    startBtn.addEventListener('click', startExam);
+  </script>
+</body>
+</html>
