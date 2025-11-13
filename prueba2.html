@@ -162,7 +162,7 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBms2MMmuhy1bLtbAmAzWHOtDuXGH0wERrHhCbeMV32F7bqIARYlqjgUWv0pRX626Q/exec";
 
     // 👇 ID de este examen (solo texto descriptivo)
-    const EXAM_ID = "EB4;
+    const EXAM_ID = "EB4";
 
     let examIsActive = false;
     let examCanceled = false;
@@ -231,8 +231,8 @@
       cancelExam(reason);
     }
 
-    // Enviar datos al script y luego iniciar examen
-    async function handleEthicsSubmit(event) {
+    // Enviar datos al script (en segundo plano) y NO bloquear el inicio del examen
+    function handleEthicsSubmit(event) {
       event.preventDefault();
 
       const nombre = nombreInput.value.trim();
@@ -248,28 +248,35 @@
         return;
       }
 
-      showMessage('Registrando tu aceptación del código de ética. Por favor espera...', 'info');
-
-      // Enviar al Web App (correo al profesor)
-      try {
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            nombre: nombre,
-            matricula: matricula,
-            examId: EXAM_ID
-          })
-        });
-        // Aunque falle el fetch, de cualquier modo iniciamos el examen
-      } catch (err) {
-        console.error('Error al llamar al script:', err);
-        // No bloqueamos al alumno por fallo técnico
-      }
-
+      // 1) Iniciar el examen de inmediato
       startExam();
+
+      // 2) Intentar enviar el correo, pero sin bloquear al alumno
+      showMessage(
+        '<strong>Examen iniciado.</strong> Registrando tu aceptación del código de ética en segundo plano.',
+        'info'
+      );
+
+      // Solo intentamos el fetch si se configuró SCRIPT_URL
+      if (SCRIPT_URL && SCRIPT_URL !== "https://script.google.com/macros/s/AKfycbzBms2MMmuhy1bLtbAmAzWHOtDuXGH0wERrHhCbeMV32F7bqIARYlqjgUWv0pRX626Q/exec") {
+        try {
+          fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              nombre: nombre,
+              matricula: matricula,
+              examId: EXAM_ID
+            })
+          }).catch(err => {
+            console.error('Error al llamar al script:', err);
+          });
+        } catch (err) {
+          console.error('Error al preparar la llamada al script:', err);
+        }
+      }
     }
 
     // 1) Pestaña oculta / visible
