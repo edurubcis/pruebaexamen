@@ -61,6 +61,50 @@
     #start-btn:hover {
       background: #0056b3;
     }
+
+    /* Overlay para bloqueo por infracción */
+    #lock-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    #lock-box {
+      background: #ffffff;
+      padding: 20px;
+      max-width: 450px;
+      width: 90%;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+    }
+    #lock-box h2 {
+      margin-top: 0;
+      color: #b30000;
+    }
+    #lock-box p {
+      margin-bottom: 10px;
+    }
+    #lock-box input {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    #lock-box button {
+      width: 100%;
+      background: #007bff;
+      color: #fff;
+    }
+    #lock-error {
+      color: #b30000;
+      font-size: 14px;
+      min-height: 18px;
+    }
   </style>
 </head>
 <body>
@@ -75,18 +119,21 @@
         <strong>Instrucciones:</strong>
         <ul>
           <li>Al iniciar, el examen se abrirá en pantalla completa.</li>
-          <li>No puedes minimizar la ventana, cambiar de pestaña ni salir de pantalla completa.</li>
-          <li>Si lo haces, el examen se cancelará y el formulario desaparecerá.</li>
+          <li>No debes minimizar la ventana, cambiar de pestaña ni salir de pantalla completa.</li>
+          <li>La <strong>primera infracción</strong> bloqueará el examen y requerirá un código del profesor para continuar.</li>
+          <li>Una <strong>segunda infracción</strong> cancelará el examen definitivamente.</li>
         </ul>
       </div>
 
       <div id="intro" class="center">
-        <p>Cuando estés listo, haz clic en el botón para iniciar el examen.</p>
+        <p>Cuando estés listo, haz clic en el siguiente botón para iniciar el examen.</p>
         <button id="start-btn">Iniciar examen</button>
       </div>
 
       <div id="exam-container" class="hidden">
-        <p class="center"><strong>Examen en curso. No salgas de esta pantalla.</strong></p>
+        <p class="center">
+          <strong>Examen en curso.</strong> No salgas de esta pantalla.
+        </p>
         <!-- AQUÍ VA TU FORMULARIO DE GOOGLE FORMS -->
         <iframe
           id="exam-frame"
@@ -101,9 +148,38 @@
     </div>
   </main>
 
+  <!-- Overlay de bloqueo por infracción -->
+  <div id="lock-overlay" class="hidden">
+    <div id="lock-box">
+      <h2>Atención: Infracción detectada</h2>
+      <p>
+        Se detectó que saliste de la ventana o pantalla del examen.
+      </p>
+      <p>
+        Tu examen ha sido <strong>bloqueado temporalmente</strong>.
+        Para continuar, tu profesor debe ingresar un código de desbloqueo.
+      </p>
+      <p><em>El código solo puede usarse una vez. Una nueva infracción cancelará el examen.</em></p>
+      <input
+        type="password"
+        id="teacher-code-input"
+        placeholder="Código del profesor"
+        autocomplete="off"
+      >
+      <div id="lock-error"></div>
+      <button id="unlock-btn">Desbloquear y continuar</button>
+    </div>
+  </div>
+
   <script>
+    // CAMBIA ESTE CÓDIGO POR EL QUE QUIERAS USAR COMO PROFESOR
+    const TEACHER_CODE = "1840";
+
     let examIsActive = false;
     let examCanceled = false;
+    let examLocked = false;
+    let teacherCodeUsed = false;
+    let infractionCount = 0;
 
     const startBtn = document.getElementById('start-btn');
     const introDiv = document.getElementById('intro');
@@ -111,8 +187,13 @@
     const messageDiv = document.getElementById('message');
     const examFrame = document.getElementById('exam-frame');
 
-    function showMessage(text, type = 'info') {
-      messageDiv.innerHTML = text;
+    const lockOverlay = document.getElementById('lock-overlay');
+    const teacherCodeInput = document.getElementById('teacher-code-input');
+    const unlockBtn = document.getElementById('unlock-btn');
+    const lockErrorDiv = document.getElementById('lock-error');
+
+    function showMessage(html, type = 'info') {
+      messageDiv.innerHTML = html;
       messageDiv.className = '';
       messageDiv.classList.add(type);
       messageDiv.id = 'message';
@@ -144,12 +225,19 @@
     }
 
     function startExam() {
-      // Iniciar examen
       examIsActive = true;
       examCanceled = false;
+      examLocked = false;
+      infractionCount = 0;
+      teacherCodeUsed = false;
+
       introDiv.classList.add('hidden');
       examContainer.classList.remove('hidden');
-      showMessage('<strong>Examen iniciado.</strong> Permanece en esta pantalla hasta terminar.', 'info');
+      showMessage(
+        '<strong>Examen iniciado.</strong> Permanece en esta pantalla hasta terminar. ' +
+        'La primera infracción requerirá un código del profesor; la segunda cancelará el examen.',
+        'info'
+      );
       goFullscreen();
     }
 
@@ -157,23 +245,85 @@
       if (!examIsActive || examCanceled) return;
       examCanceled = true;
       examIsActive = false;
+      examLocked = false;
       exitFullscreen();
 
-      // Ocultamos el formulario
       examFrame.classList.add('hidden');
+      lockOverlay.classList.add('hidden');
       showMessage('<strong>Examen cancelado.</strong> ' + reason, 'error');
+    }
+
+    function showLockOverlay(reason) {
+      examLocked = true;
+      examIsActive = false; // Pausamos la vigilancia activa
+      infractionCount += 1;
+
+      lockErrorDiv.textContent = '';
+      teacherCodeInput.value = '';
+
+      showMessage(
+        '<strong>Infracción detectada:</strong> ' + reason +
+        '<br>Tu examen está bloqueado. El profesor puede decidir si te permite continuar.',
+        'error'
+      );
+
+      lockOverlay.classList.remove('hidden');
+    }
+
+    function handleInfraction(reason) {
+      if (!examIsActive || examCanceled) return;
+
+      // Si ya se usó el código o ya hubo una infracción previa con código usado
+      if (teacherCodeUsed || infractionCount > 0) {
+        cancelExam(reason + ' (Segunda infracción).');
+      } else {
+        // Primera infracción: se bloquea y se pide código
+        showLockOverlay(reason);
+      }
+    }
+
+    function unlockExam() {
+      const code = teacherCodeInput.value.trim();
+      lockErrorDiv.textContent = '';
+
+      if (examCanceled) {
+        lockErrorDiv.textContent = 'El examen ya fue cancelado. No se puede desbloquear.';
+        return;
+      }
+
+      if (teacherCodeUsed) {
+        lockErrorDiv.textContent = 'El código ya fue utilizado una vez. No se puede volver a usar.';
+        return;
+      }
+
+      if (code === TEACHER_CODE) {
+        // Código correcto: desbloquear una sola vez
+        teacherCodeUsed = true;
+        examLocked = false;
+        lockOverlay.classList.add('hidden');
+        examIsActive = true; // Reanudamos vigilancia
+        showMessage(
+          '<strong>Examen desbloqueado.</strong> Puedes continuar, pero ' +
+          'cualquier nueva infracción cancelará el examen.',
+          'info'
+        );
+        // Opcional: asegurar que siga en fullscreen
+        goFullscreen();
+      } else {
+        lockErrorDiv.textContent = 'Código incorrecto. Consulta a tu profesor.';
+      }
     }
 
     // Eventos de seguridad
     document.addEventListener('visibilitychange', () => {
       if (examIsActive && document.hidden) {
-        cancelExam('Se detectó que la pestaña dejó de estar visible.');
+        handleInfraction('La pestaña dejó de estar visible.');
       }
     });
 
     window.addEventListener('blur', () => {
       if (examIsActive) {
-        cancelExam('Se detectó que saliste de la ventana del examen.');
+        handleInfraction('Se detectó que saliste de la ventana del examen.');
       }
     });
 
@@ -185,7 +335,7 @@
         document.msFullscreenElement
       );
       if (examIsActive && !isFull) {
-        cancelExam('Se detectó que saliste del modo de pantalla completa.');
+        handleInfraction('Se detectó que saliste del modo de pantalla completa.');
       }
     });
 
@@ -196,7 +346,15 @@
       }
     });
 
+    // Listeners
     startBtn.addEventListener('click', startExam);
+    unlockBtn.addEventListener('click', unlockExam);
+    teacherCodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        unlockExam();
+      }
+    });
   </script>
 </body>
 </html>
