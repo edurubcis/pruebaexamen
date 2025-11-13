@@ -88,7 +88,7 @@
       </div>
 
       <div id="exam-container" class="hidden">
-        <p class="center">
+        <p class="center" id="exam-status">
           <strong>Examen en curso.</strong> No salgas de esta pestaña ni minimices la ventana.
         </p>
         <!-- AQUÍ VA TU FORMULARIO DE GOOGLE FORMS -->
@@ -119,6 +119,7 @@
     const examContainer = document.getElementById('exam-container');
     const messageDiv = document.getElementById('message');
     const examFrame = document.getElementById('exam-frame');
+    const examStatusP = document.getElementById('exam-status');
 
     function showMessage(html, type = 'info') {
       messageDiv.innerHTML = html;
@@ -135,6 +136,9 @@
 
       introDiv.classList.add('hidden');
       examContainer.classList.remove('hidden');
+      examFrame.classList.remove('hidden');
+      examStatusP.classList.remove('hidden');
+
       showMessage(
         '<strong>Examen iniciado.</strong> Permanece en esta pestaña. ' +
         'La primera infracción pedirá un código; después de eso, cualquier otra infracción cancelará el examen.',
@@ -156,6 +160,7 @@
       // Ocultar todo el contenedor del examen y el iframe
       examFrame.classList.add('hidden');
       examContainer.classList.add('hidden');
+      examStatusP.classList.add('hidden');
 
       showMessage('<strong>Examen cancelado.</strong> ' + reason, 'error');
       alert('Tu examen ha sido cancelado.\n\n' + reason);
