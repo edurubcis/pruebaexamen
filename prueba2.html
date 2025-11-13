@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Examen Seguro con Código de Ética</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    header {
+      background: #222;
+      color: #fff;
+      padding: 10px 20px;
+    }
+    main {
+      padding: 20px;
+    }
+    .hidden {
+      display: none;
+    }
+    .center {
+      text-align: center;
+    }
+    #message {
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+    }
+    #message.error {
+      background: #ffe5e5;
+      color: #b30000;
+    }
+    #message.info {
+      background: #e5f0ff;
+      color: #003366;
+    }
+    #wrapper {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    #exam-frame {
+      width: 100%;
+      height: 80vh;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      margin-top: 4px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: none;
+      margin-top: 15px;
+    }
+    #accept-btn {
+      background: #007bff;
+      color: white;
+    }
+    #accept-btn:hover {
+      background: #0056b3;
+    }
+    .ethics-box {
+      background: #ffffff;
+      border-radius: 6px;
+      padding: 15px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Examen Seguro</h1>
+  </header>
+
+  <main>
+    <div id="wrapper">
+      <div id="message" class="info">
+        <strong>Instrucciones:</strong>
+        <ul>
+          <li>Antes de iniciar el examen, debes leer y aceptar el código de ética.</li>
+          <li>Debes ingresar tu nombre y matrícula tal como aparecen en la escuela.</li>
+          <li>Al aceptar, se iniciará el examen y se registrará tu aceptación.</li>
+          <li>No debes cambiar de pestaña, ventana ni minimizar durante el examen.</li>
+        </ul>
+      </div>
+
+      <!-- PASO 1: Código de ética + datos del alumno -->
+      <div id="ethics-container">
+        <h2>Código de Ética Académico</h2>
+        <div class="ethics-box">
+          <p>
+            Al iniciar este examen, me comprometo a:
+          </p>
+          <ul>
+            <li>Responder de manera honesta y personal, sin copiar respuestas de otros compañeros ni de fuentes no autorizadas.</li>
+            <li>No utilizar dispositivos adicionales (celular, tablet u otros) para buscar respuestas durante el examen.</li>
+            <li>No apoyar a otros alumnos compartiendo mis respuestas durante o después del examen, mientras siga vigente.</li>
+            <li>Respetar las indicaciones del profesor y las normas de evaluación de la institución.</li>
+          </ul>
+          <p>
+            Entiendo que cualquier falta a este código de ética puede tener consecuencias académicas de acuerdo con el reglamento interno de la escuela.
+          </p>
+        </div>
+
+        <form id="ethics-form">
+          <label>
+            Matrícula:
+            <input type="text" id="matricula-input" required>
+          </label>
+          <label>
+            Nombre completo:
+            <input type="text" id="nombre-input" required>
+          </label>
+          <label>
+            <input type="checkbox" id="accept-checkbox">
+            He leído y acepto el código de ética anterior.
+          </label>
+
+          <button type="submit" id="accept-btn">Acepto y comenzar examen</button>
+        </form>
+      </div>
+
+      <!-- PASO 2: Examen embebido (inicia oculto) -->
+      <div id="exam-container" class="hidden">
+        <p class="center" id="exam-status">
+          <strong>Examen en curso.</strong> No salgas de esta pestaña, ni cambies de ventana, ni minimices.
+        </p>
+        <iframe
+          id="exam-frame"
+          src="https://docs.google.com/forms/d/e/1FAIpQLSeiIBCLX_ZMesEVRWFLM-RzCTWkScELdgI1m2ZURg91HGzpSQ/viewform?embedded"
+          frameborder="0"
+          marginheight="0"
+          marginwidth="0"
+        >
+          Cargando…
+        </iframe>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // 👇 CAMBIA ESTO POR TU URL DEL WEB APP DE GOOGLE APPS SCRIPT
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBms2MMmuhy1bLtbAmAzWHOtDuXGH0wERrHhCbeMV32F7bqIARYlqjgUWv0pRX626Q/exec";
+
+    // 👇 ID de este examen (solo texto descriptivo)
+    const EXAM_ID = "EB4;
+
+    let examIsActive = false;
+    let examCanceled = false;
+    let monitoringActive = false;
+    let lastHiddenTime = null;
+    let lastBlurTime = null;
+    const HIDDEN_THRESHOLD_MS = 2000; // 2 segundos fuera = infracción
+
+    const messageDiv = document.getElementById('message');
+    const ethicsContainer = document.getElementById('ethics-container');
+    const ethicsForm = document.getElementById('ethics-form');
+    const matriculaInput = document.getElementById('matricula-input');
+    const nombreInput = document.getElementById('nombre-input');
+    const acceptCheckbox = document.getElementById('accept-checkbox');
+
+    const examContainer = document.getElementById('exam-container');
+    const examFrame = document.getElementById('exam-frame');
+    const examStatusP = document.getElementById('exam-status');
+
+    function showMessage(html, type = 'info') {
+      messageDiv.innerHTML = html;
+      messageDiv.className = '';
+      messageDiv.classList.add(type);
+      messageDiv.id = 'message';
+    }
+
+    function startExam() {
+      examIsActive = true;
+      examCanceled = false;
+      monitoringActive = false;
+      lastHiddenTime = null;
+      lastBlurTime = null;
+
+      ethicsContainer.classList.add('hidden');
+      examContainer.classList.remove('hidden');
+      examFrame.classList.remove('hidden');
+      examStatusP.classList.remove('hidden');
+
+      showMessage(
+        '<strong>Examen iniciado.</strong> Permanece en esta pestaña/ventana. ' +
+        'Si sales de la ventana o cambias de pestaña más de unos segundos, el examen se cancelará.',
+        'info'
+      );
+
+      setTimeout(() => {
+        monitoringActive = true;
+      }, 1500);
+    }
+
+    function cancelExam(reason) {
+      if (!examIsActive || examCanceled) return;
+      examCanceled = true;
+      examIsActive = false;
+      monitoringActive = false;
+
+      examFrame.classList.add('hidden');
+      examContainer.classList.add('hidden');
+      examStatusP.classList.add('hidden');
+
+      showMessage('<strong>Examen cancelado.</strong> ' + reason, 'error');
+      alert('Tu examen ha sido cancelado.\n\n' + reason);
+    }
+
+    function handleInfraction(reason) {
+      if (!examIsActive || examCanceled) return;
+      cancelExam(reason);
+    }
+
+    // Enviar datos al script y luego iniciar examen
+    async function handleEthicsSubmit(event) {
+      event.preventDefault();
+
+      const nombre = nombreInput.value.trim();
+      const matricula = matriculaInput.value.trim();
+      const acepto = acceptCheckbox.checked;
+
+      if (!nombre || !matricula) {
+        showMessage('Debes ingresar tu nombre y matrícula para iniciar el examen.', 'error');
+        return;
+      }
+      if (!acepto) {
+        showMessage('Debes marcar que aceptas el código de ética para continuar.', 'error');
+        return;
+      }
+
+      showMessage('Registrando tu aceptación del código de ética. Por favor espera...', 'info');
+
+      // Enviar al Web App (correo al profesor)
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            nombre: nombre,
+            matricula: matricula,
+            examId: EXAM_ID
+          })
+        });
+        // Aunque falle el fetch, de cualquier modo iniciamos el examen
+      } catch (err) {
+        console.error('Error al llamar al script:', err);
+        // No bloqueamos al alumno por fallo técnico
+      }
+
+      startExam();
+    }
+
+    // 1) Pestaña oculta / visible
+    document.addEventListener('visibilitychange', () => {
+      if (!examIsActive || !monitoringActive) return;
+
+      if (document.hidden) {
+        lastHiddenTime = Date.now();
+      } else {
+        if (lastHiddenTime) {
+          const elapsed = Date.now() - lastHiddenTime;
+          if (elapsed >= HIDDEN_THRESHOLD_MS) {
+            handleInfraction(
+              'La pestaña del examen estuvo oculta durante aproximadamente ' +
+              Math.round(elapsed / 1000) + ' segundos.'
+            );
+          }
+          lastHiddenTime = null;
+        }
+      }
+    });
+
+    // 2) Ventana pierde / recupera foco
+    window.addEventListener('blur', () => {
+      if (!examIsActive || !monitoringActive) return;
+      lastBlurTime = Date.now();
+    });
+
+    window.addEventListener('focus', () => {
+      if (!examIsActive || !monitoringActive) return;
+      if (lastBlurTime) {
+        const elapsed = Date.now() - lastBlurTime;
+        lastHiddenTime = null;
+        if (elapsed >= HIDDEN_THRESHOLD_MS) {
+          handleInfraction(
+            'La ventana del examen estuvo en segundo plano durante aproximadamente ' +
+            Math.round(elapsed / 1000) + ' segundos.'
+          );
+        }
+        lastBlurTime = null;
+      }
+    });
+
+    window.addEventListener('beforeunload', (event) => {
+      if (examIsActive && !examCanceled) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    });
+
+    ethicsForm.addEventListener('submit', handleEthicsSubmit);
+  </script>
+</body>
+</html>
