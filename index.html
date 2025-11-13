@@ -34,7 +34,7 @@
     }
     #message.info {
       background: #e5f0ff;
-      color: #003366;
+      color: #00366;
     }
     #wrapper {
       max-width: 1000px;
@@ -109,10 +109,13 @@
     // 👇 CAMBIA ESTE CÓDIGO POR EL QUE QUIERAS USAR COMO PROFESOR
     const TEACHER_CODE = "1840";
 
-    let examIsActive = false;     // el examen está en curso
-    let examCanceled = false;     // el examen fue cancelado
-    let teacherCodeUsed = false;  // ya se usó el código una vez
-    let monitoringActive = false; // empieza a vigilar después de un pequeño delay
+    let examIsActive = false;
+    let examCanceled = false;
+    let teacherCodeUsed = false;
+    let monitoringActive = false;
+    let lastHiddenTime = null; // cuándo se ocultó la pestaña
+
+    const HIDDEN_THRESHOLD_MS = 2000; // 2 segundos fuera = infracción
 
     const startBtn = document.getElementById('start-btn');
     const introDiv = document.getElementById('intro');
@@ -132,7 +135,8 @@
       examIsActive = true;
       examCanceled = false;
       teacherCodeUsed = false;
-      monitoringActive = false; // aún no vigilamos
+      monitoringActive = false;
+      lastHiddenTime = null;
 
       introDiv.classList.add('hidden');
       examContainer.classList.remove('hidden');
@@ -145,7 +149,7 @@
         'info'
       );
 
-      // Activar la vigilancia después de 1.5 segundos
+      // Empezamos a vigilar después de 1.5 s para evitar falsos positivos al arranque
       setTimeout(() => {
         monitoringActive = true;
       }, 1500);
@@ -157,7 +161,6 @@
       examIsActive = false;
       monitoringActive = false;
 
-      // Ocultar todo el contenedor del examen y el iframe
       examFrame.classList.add('hidden');
       examContainer.classList.add('hidden');
       examStatusP.classList.add('hidden');
@@ -167,12 +170,11 @@
     }
 
     function handleInfraction(reason) {
-      if (!examIsActive || examCanceled || !monitoringActive) return;
+      if (!examIsActive || examCanceled) return;
 
-      // Primera vez (no se ha usado código)
       if (!teacherCodeUsed) {
         const code = prompt(
-          'Se detectó una infracción:\n\n' + reason +
+          'Se detectó una posible infracción:\n\n' + reason +
           '\n\nPide a tu profesor el código para continuar. ' +
           'Si no lo ingresas correctamente, el examen será cancelado.'
         );
@@ -185,20 +187,32 @@
             'Si vuelves a salir de la pestaña o minimizar, el examen será cancelado.',
             'error'
           );
-          return; // NO cancelamos en esta primera vez
+          return;
         } else {
           cancelExam(reason + ' (código incorrecto o no ingresado).');
         }
       } else {
-        // Ya usó el código una vez → cualquier otra infracción cancela
         cancelExam(reason + ' (segunda infracción).');
       }
     }
 
-    // Eventos de seguridad (solo detectamos cuando la pestaña deja de ser visible)
+    // Detectamos solo: estuvo oculto un rato y luego regresó
     document.addEventListener('visibilitychange', () => {
-      if (examIsActive && monitoringActive && document.hidden) {
-        handleInfraction('La pestaña dejó de estar visible.');
+      if (!examIsActive || !monitoringActive) return;
+
+      if (document.hidden) {
+        // Se ocultó
+        lastHiddenTime = Date.now();
+      } else {
+        // Volvió a ser visible
+        if (lastHiddenTime) {
+          const elapsed = Date.now() - lastHiddenTime;
+          if (elapsed >= HIDDEN_THRESHOLD_MS) {
+            handleInfraction('La pestaña estuvo oculta durante aproximadamente ' + Math.round(elapsed / 1000) + ' segundos.');
+          }
+          // Reseteamos
+          lastHiddenTime = null;
+        }
       }
     });
 
@@ -209,7 +223,6 @@
       }
     });
 
-    // Listener principal
     startBtn.addEventListener('click', startExam);
   </script>
 </body>
