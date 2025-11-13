@@ -34,7 +34,7 @@
     }
     #message.info {
       background: #e5f0ff;
-      color: #00366;
+      color: #003366;
     }
     #wrapper {
       max-width: 1000px;
@@ -75,7 +75,7 @@
         <strong>Instrucciones:</strong>
         <ul>
           <li>Al iniciar, el examen aparecerá en esta página.</li>
-          <li>No debes cambiar de pestaña ni minimizar la ventana.</li>
+          <li>No debes cambiar de pestaña, ventana ni minimizar.</li>
           <li>La <strong>primera infracción</strong> pedirá un código del profesor.</li>
           <li>Si el código es correcto, podrás continuar una sola vez.</li>
           <li>Cualquier infracción después de eso cancelará el examen.</li>
@@ -89,7 +89,7 @@
 
       <div id="exam-container" class="hidden">
         <p class="center" id="exam-status">
-          <strong>Examen en curso.</strong> No salgas de esta pestaña ni minimices la ventana.
+          <strong>Examen en curso.</strong> No salgas de esta pestaña, ni cambies de ventana, ni minimices.
         </p>
         <!-- AQUÍ VA TU FORMULARIO DE GOOGLE FORMS -->
         <iframe
@@ -113,7 +113,9 @@
     let examCanceled = false;
     let teacherCodeUsed = false;
     let monitoringActive = false;
+
     let lastHiddenTime = null; // cuándo se ocultó la pestaña
+    let lastBlurTime = null;   // cuándo la ventana perdió foco
 
     const HIDDEN_THRESHOLD_MS = 2000; // 2 segundos fuera = infracción
 
@@ -137,6 +139,7 @@
       teacherCodeUsed = false;
       monitoringActive = false;
       lastHiddenTime = null;
+      lastBlurTime = null;
 
       introDiv.classList.add('hidden');
       examContainer.classList.remove('hidden');
@@ -144,7 +147,7 @@
       examStatusP.classList.remove('hidden');
 
       showMessage(
-        '<strong>Examen iniciado.</strong> Permanece en esta pestaña. ' +
+        '<strong>Examen iniciado.</strong> Permanece en esta pestaña/ventana. ' +
         'La primera infracción pedirá un código; después de eso, cualquier otra infracción cancelará el examen.',
         'info'
       );
@@ -184,7 +187,7 @@
           alert('Código correcto. Puedes continuar, pero cualquier nueva infracción cancelará el examen.');
           showMessage(
             '<strong>Advertencia:</strong> Ya se detectó una infracción. ' +
-            'Si vuelves a salir de la pestaña o minimizar, el examen será cancelado.',
+            'Si vuelves a salir de la pestaña/ventana o minimizar, el examen será cancelado.',
             'error'
           );
           return;
@@ -196,26 +199,53 @@
       }
     }
 
-    // Detectamos solo: estuvo oculto un rato y luego regresó
+    // 1) Pestaña oculta / visible (por cambio de pestaña o ventana que la tape)
     document.addEventListener('visibilitychange', () => {
       if (!examIsActive || !monitoringActive) return;
 
       if (document.hidden) {
-        // Se ocultó
+        // Se ocultó la pestaña
         lastHiddenTime = Date.now();
       } else {
         // Volvió a ser visible
         if (lastHiddenTime) {
           const elapsed = Date.now() - lastHiddenTime;
           if (elapsed >= HIDDEN_THRESHOLD_MS) {
-            handleInfraction('La pestaña estuvo oculta durante aproximadamente ' + Math.round(elapsed / 1000) + ' segundos.');
+            handleInfraction(
+              'La pestaña del examen estuvo oculta durante aproximadamente ' +
+              Math.round(elapsed / 1000) + ' segundos.'
+            );
           }
-          // Reseteamos
           lastHiddenTime = null;
         }
       }
     });
 
+    // 2) Ventana pierde / recupera foco (Alt+Tab, otra ventana, carpetas, etc.)
+    window.addEventListener('blur', () => {
+      if (!examIsActive || !monitoringActive) return;
+      lastBlurTime = Date.now();
+    });
+
+    window.addEventListener('focus', () => {
+      if (!examIsActive || !monitoringActive) return;
+
+      if (lastBlurTime) {
+        const elapsed = Date.now() - lastBlurTime;
+        // Si ya se contó como oculto, limpiamos para no duplicar
+        lastHiddenTime = null;
+
+        if (elapsed >= HIDDEN_THRESHOLD_MS) {
+          handleInfraction(
+            'La ventana del examen estuvo en segundo plano durante aproximadamente ' +
+            Math.round(elapsed / 1000) + ' segundos.'
+          );
+        }
+        lastBlurTime = null;
+      }
+    });
+
+    // Aviso si intenta cerrar o recargar
     window.addEventListener('beforeunload', (event) => {
       if (examIsActive && !examCanceled) {
         event.preventDefault();
