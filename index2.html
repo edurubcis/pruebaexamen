@@ -192,6 +192,7 @@
     let monitoringActive = false;  // empieza a vigilar solo en el paso 3
     let penaltyEnabled = false;    // flag extra para evitar penalización al finalizar
     let awaySince = null;          // momento en que salió de pestaña/ventana
+    let suppressionUntil = 0;   // ignorar infracciones hasta este momento (ms)
 
     const messageDiv = document.getElementById('message');
     const step1 = document.getElementById('step1');
@@ -329,6 +330,7 @@
     examIsActive = true;
     examCanceled = false;
     awaySince = null;
+    
 
     // Nos aseguramos visualmente de seguir en el Paso 3
     currentStep = 3;
@@ -345,6 +347,8 @@
       'Si vuelves a salir de la pestaña/ventana o minimizar, el examen será cancelado.',
       'error'
     );
+    // Ignorar posibles eventos de foco/visibilidad inmediatamente después de la rehabilitación
+    suppressionUntil = Date.now() + 2000; // 2 segundos de “comodín”
 
     // 🔁 Re-activamos la vigilancia con un pequeño delay
     setTimeout(() => {
@@ -371,23 +375,30 @@
 
     // Calcula cuánto tiempo estuvo fuera y, si pasa el umbral, cuenta infracción
     function markBack(source) {
-      if (!examIsActive || !monitoringActive || !penaltyEnabled) {
-        awaySince = null;
-        return;
-      }
-      if (awaySince === null) return;
+  if (!examIsActive || !monitoringActive || !penaltyEnabled) {
+    awaySince = null;
+    return;
+  }
 
-      const elapsed = Date.now() - awaySince;
-      awaySince = null;
+  // Ignorar eventos “fantasma” justo después de una rehabilitación
+  if (Date.now() < suppressionUntil) {
+    awaySince = null;
+    return;
+  }
 
-      if (elapsed >= AWAY_THRESHOLD_MS) {
-        const seconds = Math.round(elapsed / 1000);
-        handleInfraction(
-          'La ' + source + ' del examen estuvo fuera de foco durante aproximadamente ' +
-          seconds + ' segundos.'
-        );
-      }
-    }
+  if (awaySince === null) return;
+
+  const elapsed = Date.now() - awaySince;
+  awaySince = null;
+
+  if (elapsed >= AWAY_THRESHOLD_MS) {
+    const seconds = Math.round(elapsed / 1000);
+    handleInfraction(
+      'La ' + source + ' del examen estuvo fuera de foco durante aproximadamente ' +
+      seconds + ' segundos.'
+    );
+  }
+}
 
     // 🔐 EXTRA: cualquier interacción dentro de la página "resetea" un posible awaySince viejo
     ['click', 'keydown', 'scroll', 'mousemove'].forEach(ev => {
