@@ -179,7 +179,7 @@
 
   <script>
     // 👇 CAMBIA ESTE CÓDIGO POR EL QUE QUIERAS USAR COMO PROFESOR
-    const TEACHER_CODE = "1840";
+    const TEACHER_CODE = "1805";
 
     // Tiempo mínimo fuera antes de contar como infracción (ms)
     const AWAY_THRESHOLD_MS = 1000; // 1 segundo
@@ -190,6 +190,7 @@
     let examCanceled = false;
     let teacherCodeUsed = false;   // true después de la primera infracción perdonada
     let monitoringActive = false;  // empieza a vigilar solo en el paso 3
+    let penaltyEnabled = false;    // flag extra para evitar penalización al finalizar
     let awaySince = null;          // momento en que salió de pestaña/ventana
 
     const messageDiv = document.getElementById('message');
@@ -254,8 +255,9 @@
     function startExam() {
       examIsActive = true;
       examCanceled = false;
-      teacherCodeUsed = false;  // opcional: podrías mantenerlo en true si quieres que cuente desde antes
+      teacherCodeUsed = false;
       monitoringActive = false;
+      penaltyEnabled = false; // lo activamos después de un breve delay
       awaySince = null;
 
       examFrame.classList.remove('hidden');
@@ -270,6 +272,7 @@
       // Activar vigilancia después de 0.5 s para evitar falsos positivos al entrar
       setTimeout(() => {
         monitoringActive = true;
+        penaltyEnabled = true;
       }, 500);
     }
 
@@ -277,6 +280,7 @@
       examIsActive = false;
       examCanceled = false;
       monitoringActive = false;
+      penaltyEnabled = false;
       awaySince = null;
     }
 
@@ -285,6 +289,8 @@
       examCanceled = true;
       examIsActive = false;
       monitoringActive = false;
+      penaltyEnabled = false;
+      awaySince = null;
 
       examFrame.classList.add('hidden');
       examStatusP.classList.add('hidden');
@@ -294,7 +300,7 @@
     }
 
     function handleInfraction(reason) {
-      if (!examIsActive || examCanceled) return;
+      if (!examIsActive || examCanceled || !penaltyEnabled) return;
 
       // Si ya se usó el código una vez, cualquier infracción cancela
       if (teacherCodeUsed) {
@@ -324,7 +330,7 @@
 
     // Marca el momento en que se fue de pestaña/ventana (solo en paso 3)
     function markAway() {
-      if (!examIsActive || !monitoringActive) return;
+      if (!examIsActive || !monitoringActive || !penaltyEnabled) return;
       if (awaySince === null) {
         awaySince = Date.now();
       }
@@ -332,7 +338,7 @@
 
     // Calcula cuánto tiempo estuvo fuera y, si pasa el umbral, cuenta infracción
     function markBack(source) {
-      if (!examIsActive || !monitoringActive) {
+      if (!examIsActive || !monitoringActive || !penaltyEnabled) {
         awaySince = null;
         return;
       }
@@ -350,11 +356,20 @@
       }
     }
 
+    // 🔐 EXTRA: cualquier interacción dentro de la página "resetea" un posible awaySince viejo
+    ['click', 'keydown', 'scroll', 'mousemove'].forEach(ev => {
+      document.addEventListener(ev, () => {
+        if (examIsActive && monitoringActive && penaltyEnabled) {
+          // Si el alumno está interactuando dentro del examen,
+          // asumimos que está presente y borramos cualquier marca vieja
+          awaySince = null;
+        }
+      });
+    });
+
     // 1) Cambio de visibilidad (pestañas)
     document.addEventListener('visibilitychange', () => {
-      // Solo nos interesa cuando ya estamos en el paso 3 (examen)
       if (currentStep !== 3) return;
-
       if (document.hidden) {
         markAway();
       } else {
@@ -392,9 +407,11 @@
     });
 
     btnFinishExam.addEventListener('click', () => {
-      // Aquí no validamos si envió el Forms; eso lo controla el propio Google Forms
+      // Apagamos completamente el sistema de penalizaciones ANTES de cambiar de pantalla
       examIsActive = false;
       monitoringActive = false;
+      penaltyEnabled = false;
+      awaySince = null;
       goToStep(4);
     });
 
