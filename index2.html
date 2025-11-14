@@ -303,6 +303,11 @@
   // Si el examen ya no está activo o las penalizaciones están apagadas, no hacemos nada
   if (!examIsActive || examCanceled || !penaltyEnabled) return;
 
+  // ⚠️ Pausamos la vigilancia mientras se maneja esta infracción
+  monitoringActive = false;
+  penaltyEnabled = false;
+  awaySince = null;
+
   // Si ya se usó el código una vez, cualquier nueva infracción cancela
   if (teacherCodeUsed) {
     cancelExam(reason + ' (segunda infracción).');
@@ -320,11 +325,9 @@
     // Código correcto → seguimos en el examen (Paso 3)
     teacherCodeUsed = true;
 
-    // Reafirmamos el estado del examen por si algo raro cambió
+    // Reafirmamos el estado del examen
     examIsActive = true;
     examCanceled = false;
-    monitoringActive = true;
-    penaltyEnabled = true;
     awaySince = null;
 
     // Nos aseguramos visualmente de seguir en el Paso 3
@@ -342,11 +345,21 @@
       'Si vuelves a salir de la pestaña/ventana o minimizar, el examen será cancelado.',
       'error'
     );
+
+    // 🔁 Re-activamos la vigilancia con un pequeño delay
+    setTimeout(() => {
+      if (!examCanceled && examIsActive) {
+        monitoringActive = true;
+        penaltyEnabled = true;
+        awaySince = null;
+      }
+    }, 500);
   } else {
     // Código incorrecto o cancelado
     cancelExam(reason + ' (código incorrecto o no ingresado).');
   }
 }
+
 
     // Marca el momento en que se fue de pestaña/ventana (solo en paso 3)
     function markAway() {
