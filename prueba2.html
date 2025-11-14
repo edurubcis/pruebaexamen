@@ -197,6 +197,16 @@
           Si tienes cualquier duda, levanta la mano y coméntalo con tu maestro.
         </p>
       </section>
+       <!-- PASO 5: Examen cancelado por infracciones -->
+      <section id="step5-cancel" class="step hidden">
+        <h2>Examen cancelado</h2>
+        <p>
+          Tu examen ha sido cancelado por cometer dos infracciones en el sistema de monitoreo.
+        </p>
+        <p>
+          Permanece en tu lugar y llama a tu maestro para recibir indicaciones.
+        </p>
+      </section>
 
       <!-- OVERLAY DE CONFIRMACIÓN AL FINALIZAR -->
       <div id="finish-confirm-overlay" class="hidden">
@@ -240,6 +250,7 @@
     const step2 = document.getElementById('step2');
     const step3 = document.getElementById('step3');
     const step4 = document.getElementById('step4-success');
+    const step5 = document.getElementById('step5-cancel');
     const examFrame = document.getElementById('exam-frame');
     const examStatusP = document.getElementById('exam-status');
 
@@ -263,10 +274,11 @@
       currentStep = stepNumber;
 
       // Ocultar todos
-      step1.classList.add('hidden');
-      step2.classList.add('hidden');
-      step3.classList.add('hidden');
-      step4.classList.add('hidden');
+   step1.classList.add('hidden');
+step2.classList.add('hidden');
+step3.classList.add('hidden');
+step4.classList.add('hidden');
+step5.classList.add('hidden');
 
       if (stepNumber === 1) {
         step1.classList.remove('hidden');
@@ -294,6 +306,14 @@
           '<strong>Examen finalizado.</strong> Si el formulario de Google Forms mostró su confirmación, ' +
           'tu examen ha quedado registrado.',
           'info'
+        );
+      } else if (stepNumber === 5) {
+        step5.classList.remove('hidden');
+        stopExamMonitoring();
+        showMessage(
+          '<strong>Examen cancelado.</strong> Has cometido dos infracciones. ' +
+          'Permanece en tu lugar y llama a tu maestro.',
+          'error'
         );
       }
     }
@@ -332,21 +352,26 @@
       suppressionUntil = 0;
     }
 
-    function cancelExam(reason) {
-      if (!examIsActive || examCanceled) return;
-      examCanceled = true;
-      examIsActive = false;
-      monitoringActive = false;
-      penaltyEnabled = false;
-      awaySince = null;
-      suppressionUntil = 0;
+   function cancelExam(reason) {
+  if (!examIsActive || examCanceled) return;
+  examCanceled = true;
+  examIsActive = false;
+  monitoringActive = false;
+  penaltyEnabled = false;
+  awaySince = null;
+  suppressionUntil = 0;
 
-      examFrame.classList.add('hidden');
-      examStatusP.classList.add('hidden');
+  // Ocultamos el examen y cualquier overlay
+  examFrame.classList.add('hidden');
+  examStatusP.classList.add('hidden');
+  finishOverlay.classList.add('hidden');
 
-      showMessage('<strong>Examen cancelado.</strong> ' + reason, 'error');
-      alert('Tu examen ha sido cancelado.\n\n' + reason);
-    }
+  // Vamos al paso 5 (examen cancelado)
+  goToStep(5);
+
+  alert('Tu examen ha sido cancelado.\n\n' + reason);
+}
+
 
     function handleInfraction(reason) {
       // Si el examen ya no está activo o las penalizaciones están apagadas, no hacemos nada
@@ -515,25 +540,40 @@
     });
 
     btnConfirmNo.addEventListener('click', () => {
-      // Ocultamos overlay y regresamos al examen
-      finishOverlay.classList.add('hidden');
+  // Ocultamos overlay
+  finishOverlay.classList.add('hidden');
 
-      // Reactivamos el examen y las penalizaciones, con una pequeña supresión
-      examIsActive = true;
-      examCanceled = false;
-      monitoringActive = true;
-      penaltyEnabled = true;
-      awaySince = null;
-      suppressionUntil = Date.now() + 1500; // 1.5 s de colchón
+  // Si el examen ya fue cancelado, NO se puede regresar
+  if (examCanceled) {
+    goToStep(5);
+    return;
+  }
 
-      // Aseguramos que visualmente siga en el Paso 3
-      currentStep = 3;
-      step1.classList.add('hidden');
-      step2.classList.add('hidden');
-      step3.classList.remove('hidden');
-      step4.classList.add('hidden');
-      examFrame.classList.remove('hidden');
-      examStatusP.classList.remove('hidden');
+  // Reactivamos el examen y las penalizaciones, con una pequeña supresión
+  examIsActive = true;
+  examCanceled = false;
+  monitoringActive = true;
+  penaltyEnabled = true;
+  awaySince = null;
+  suppressionUntil = Date.now() + 1500; // 1.5 s de colchón
+
+  // Aseguramos que visualmente siga en el Paso 3
+  currentStep = 3;
+  step1.classList.add('hidden');
+  step2.classList.add('hidden');
+  step3.classList.remove('hidden');
+  step4.classList.add('hidden');
+  step5.classList.add('hidden');
+  examFrame.classList.remove('hidden');
+  examStatusP.classList.remove('hidden');
+
+  showMessage(
+    '<strong>Continúa con tu examen.</strong> Asegúrate de enviar el formulario de Google Forms ' +
+    'antes de volver a presionar "Finalizar examen".',
+    'info'
+  );
+});
+
 
       showMessage(
         '<strong>Continúa con tu examen.</strong> Asegúrate de enviar el formulario de Google Forms ' +
