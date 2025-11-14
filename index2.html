@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Examen Seguro</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    header {
+      background: #222;
+      color: #fff;
+      padding: 10px 20px;
+    }
+    main {
+      padding: 20px;
+    }
+    .hidden {
+      display: none;
+    }
+    .center {
+      text-align: center;
+    }
+    #message {
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+    }
+    #message.error {
+      background: #ffe5e5;
+      color: #b30000;
+    }
+    #message.info {
+      background: #e5f0ff;
+      color: #003366;
+    }
+    #wrapper {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    #exam-frame {
+      width: 100%;
+      height: 80vh;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: none;
+    }
+    #start-btn {
+      background: #007bff;
+      color: white;
+    }
+    #start-btn:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Examen Seguro</h1>
+  </header>
+
+  <main>
+    <div id="wrapper">
+      <div id="message" class="info">
+        <strong>Instrucciones:</strong>
+        <ul>
+          <li>Al iniciar, el examen aparecerá en esta página.</li>
+          <li>No debes cambiar de pestaña, ventana ni minimizar.</li>
+          <li>La <strong>primera infracción</strong> pedirá un código del profesor.</li>
+          <li>Si el código es correcto, podrás continuar una sola vez.</li>
+          <li>Cualquier infracción después de eso cancelará el examen.</li>
+        </ul>
+      </div>
+
+      <div id="intro" class="center">
+        <p>Cuando estés listo, haz clic en el siguiente botón para iniciar el examen.</p>
+        <button id="start-btn">Iniciar examen</button>
+      </div>
+
+      <div id="exam-container" class="hidden">
+        <p class="center" id="exam-status">
+          <strong>Examen en curso.</strong> No salgas de esta pestaña, ni cambies de ventana, ni minimices.
+        </p>
+        <!-- AQUÍ VA TU FORMULARIO DE GOOGLE FORMS -->
+        <iframe
+          id="exam-frame"
+          src="https://docs.google.com/forms/d/e/1FAIpQLSeiIBCLX_ZMesEVRWFLM-RzCTWkScELdgI1m2ZURg91HGzpSQ/viewform?embedded"
+          frameborder="0"
+          marginheight="0"
+          marginwidth="0"
+        >
+          Cargando…
+        </iframe>
+      </div>
+    </div>
+  </main>
+
+   <script>
+    // 👇 CAMBIA ESTE CÓDIGO POR EL QUE QUIERAS USAR COMO PROFESOR
+    const TEACHER_CODE = "1845";
+
+    // Tiempo mínimo fuera antes de contar como infracción (ms)
+    const AWAY_THRESHOLD_MS = 2500; // 2.5 segundos
+
+    let examIsActive = false;
+    let examCanceled = false;
+    let teacherCodeUsed = false;   // true después de la primera infracción perdonada
+    let monitoringActive = false;  // empieza a vigilar después del inicio
+    let awaySince = null;          // momento en que salió de pestaña/ventana
+
+    const startBtn = document.getElementById('start-btn');
+    const introDiv = document.getElementById('intro');
+    const examContainer = document.getElementById('exam-container');
+    const messageDiv = document.getElementById('message');
+    const examFrame = document.getElementById('exam-frame');
+    const examStatusP = document.getElementById('exam-status');
+
+    function showMessage(html, type = 'info') {
+      messageDiv.innerHTML = html;
+      messageDiv.className = '';
+      messageDiv.classList.add(type);
+      messageDiv.id = 'message';
+    }
+
+    function startExam() {
+      examIsActive = true;
+      examCanceled = false;
+      teacherCodeUsed = false;
+      monitoringActive = false;
+      awaySince = null;
+
+      introDiv.classList.add('hidden');
+      examContainer.classList.remove('hidden');
+      examFrame.classList.remove('hidden');
+      examStatusP.classList.remove('hidden');
+
+      showMessage(
+        '<strong>Examen iniciado.</strong> Permanece en esta pestaña/ventana. ' +
+        'La primera infracción pedirá un código; después de eso, cualquier otra infracción cancelará el examen.',
+        'info'
+      );
+
+      // Activar vigilancia después de 1.5 s para evitar falsos positivos al arranque
+      setTimeout(() => {
+        monitoringActive = true;
+      }, 1500);
+    }
+
+    function cancelExam(reason) {
+      if (!examIsActive || examCanceled) return;
+      examCanceled = true;
+      examIsActive = false;
+      monitoringActive = false;
+
+      examFrame.classList.add('hidden');
+      examContainer.classList.add('hidden');
+      examStatusP.classList.add('hidden');
+
+      showMessage('<strong>Examen cancelado.</strong> ' + reason, 'error');
+      alert('Tu examen ha sido cancelado.\n\n' + reason);
+    }
+
+    function handleInfraction(reason) {
+      if (!examIsActive || examCanceled) return;
+
+      // Si ya se usó el código una vez, cualquier infracción cancela
+      if (teacherCodeUsed) {
+        cancelExam(reason + ' (segunda infracción).');
+        return;
+      }
+
+      // Primera vez: permitir usar código
+      const code = prompt(
+        'Se detectó una posible infracción:\n\n' + reason +
+        '\n\nPide a tu profesor el código para continuar. ' +
+        'Si no lo ingresas correctamente, el examen será cancelado.'
+      );
+
+      if (code === TEACHER_CODE) {
+        teacherCodeUsed = true;
+        alert('Código correcto. Puedes continuar, pero cualquier nueva infracción cancelará el examen.');
+        showMessage(
+          '<strong>Advertencia:</strong> Ya se detectó una infracción. ' +
+          'Si vuelves a salir de la pestaña/ventana o minimizar, el examen será cancelado.',
+          'error'
+        );
+      } else {
+        cancelExam(reason + ' (código incorrecto o no ingresado).');
+      }
+    }
+
+    // Marca el momento en que se fue de pestaña/ventana
+    function markAway() {
+      if (!examIsActive || !monitoringActive) return;
+      if (awaySince === null) {
+        awaySince = Date.now();
+      }
+    }
+
+    // Calcula cuánto tiempo estuvo fuera y, si pasa el umbral, cuenta infracción
+    function markBack(source) {
+      if (!examIsActive || !monitoringActive) {
+        awaySince = null;
+        return;
+      }
+      if (awaySince === null) return;
+
+      const elapsed = Date.now() - awaySince;
+      awaySince = null;
+
+      if (elapsed >= AWAY_THRESHOLD_MS) {
+        const seconds = Math.round(elapsed / 1000);
+        handleInfraction(
+          'La ' + source + ' del examen estuvo fuera de foco durante aproximadamente ' +
+          seconds + ' segundos.'
+        );
+      }
+    }
+
+    // 1) Cambio de visibilidad (pestañas)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        markAway();
+      } else {
+        markBack('pestaña');
+      }
+    });
+
+    // 2) Cambio de foco de ventana (Alt+Tab, otra ventana, carpetas, etc.)
+    window.addEventListener('blur', () => {
+      markAway();
+    });
+
+    window.addEventListener('focus', () => {
+      markBack('ventana');
+    });
+
+    // Aviso si intenta cerrar o recargar
+    window.addEventListener('beforeunload', (event) => {
+      if (examIsActive && !examCanceled) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    });
+
+    startBtn.addEventListener('click', startExam);
+  </script>
+</body>
+</html>
