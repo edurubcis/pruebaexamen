@@ -113,7 +113,7 @@
       <div id="message" class="info">
         <strong>Bienvenido al examen.</strong>
         <br>
-        Sigue las instrucciones paso a paso. Las infracciones solo aplican en el tercer paso (examen).
+        Sigue las instrucciones paso a paso.
       </div>
 
       <!-- PASO 1: Instrucciones generales -->
@@ -125,11 +125,11 @@
         <ul>
           <li>No debes cambiar de pestaña, ventana ni minimizar mientras respondes el examen.</li>
           <li>Durante el examen, el sistema detectará si sales de la ventana más de un segundo.</li>
-          <li>La primera vez que ocurra, el profesor puede decidir rehabilitarte con un código.</li>
+          <li>La primera vez que ocurra, el profesor puede decidir rehabilitar el examen con un código.</li>
           <li>Si ocurre de nuevo, el examen se cancelará automáticamente.</li>
         </ul>
         <p>
-          Da clic en el siguiente botón para ir al formulario de registro. Todavía no se aplica ninguna penalización.
+          Da clic en el siguiente botón para ir al formulario de registro.
         </p>
         <div class="center">
           <button id="btn-step1-next" class="btn-primary">Siguiente: Registro</button>
@@ -140,8 +140,8 @@
       <section id="step2" class="step hidden">
         <h2>Paso 2: Registro previo</h2>
         <p>
-          Completa el siguiente formulario de registro (matrícula, nombre, grupo y aceptación del código de ética).
-          Una vez que des clic en <strong>Enviar</strong> en el formulario, regresa aquí y pulsa <strong>Siguiente</strong>.
+          Completa el siguiente formulario de registro.
+          Una vez que des clic en <strong>Enviar</strong> en el formulario, pulsa al final de la página el botón <strong>Siguiente</strong>.
         </p>
         <iframe
           id="registro-frame"
@@ -167,7 +167,7 @@
         </p>
         <p>
           Responde el formulario de examen que aparece abajo. Al terminar de contestar en el formulario de Google Forms
-          (botón Enviar dentro del formulario), regresa aquí y da clic en <strong>Finalizar examen</strong>.
+          (botón Enviar dentro del formulario), finaliza tu examen dando clic en el botón rojo que dice <strong>Finalizar examen</strong>.
         </p>
         <iframe
           id="exam-frame"
@@ -189,8 +189,7 @@
       <section id="step4-success" class="step hidden">
         <h2>Examen enviado</h2>
         <p>
-          Tu examen ha sido finalizado satisfactoriamente (desde esta plataforma).
-          Asegúrate de que el formulario de Google Forms muestre también su confirmación de envío.
+          Tu examen ha sido finalizado satisfactoriamente.
         </p>
         <p>
           Si tienes cualquier duda, levanta la mano y coméntalo con tu profesor.
@@ -285,7 +284,7 @@
         stopExamMonitoring();
         showMessage(
           '<strong>Bienvenido al examen.</strong><br>' +
-          'Sigue las instrucciones del Paso 1. Aún no se aplican infracciones.',
+          'Sigue las instrucciones del Paso 1.',
           'info'
         );
       } else if (stepNumber === 2) {
@@ -293,7 +292,7 @@
         stopExamMonitoring();
         showMessage(
           '<strong>Paso 2:</strong> Completa el formulario de registro. ' +
-          'Después de enviarlo, da clic en "Siguiente: Iniciar examen". Aún no se aplican infracciones.',
+          'Después de enviarlo, da clic en "Siguiente: Iniciar examen".',
           'info'
         );
       } else if (stepNumber === 3) {
@@ -332,7 +331,7 @@
 
       showMessage(
         '<strong>Paso 3:</strong> Examen iniciado. Permanece en esta pestaña/ventana. ' +
-        'La primera infracción pedirá un código del profesor; la segunda cancelará el examen.',
+        'La primera infracción pedirá un código del profesor; la segunda cancelará el examen <strong>automáticamente</strong>.',
         'info'
       );
 
@@ -413,7 +412,7 @@
         examFrame.classList.remove('hidden');
         examStatusP.classList.remove('hidden');
 
-        alert('Código correcto. Puedes continuar, pero cualquier nueva infracción cancelará el examen.');
+        alert('Código correcto. Puedes continuar, pero cualquier nueva infracción <strong>cancelará el examen</strong>.');
         showMessage(
           '<strong>Advertencia:</strong> Ya se detectó una infracción. ' +
           'Si vuelves a salir de la pestaña/ventana o minimizar, el examen será cancelado.',
