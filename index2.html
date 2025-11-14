@@ -23,29 +23,22 @@
     .center {
       text-align: center;
     }
+    #wrapper {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
     #message {
       padding: 10px;
       margin-bottom: 15px;
       border-radius: 4px;
     }
-    #message.error {
-      background: #ffe5e5;
-      color: #b30000;
-    }
     #message.info {
       background: #e5f0ff;
       color: #003366;
     }
-    #wrapper {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
-    #exam-frame {
-      width: 100%;
-      height: 80vh;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background: #fff;
+    #message.error {
+      background: #ffe5e5;
+      color: #b30000;
     }
     button {
       padding: 10px 20px;
@@ -53,13 +46,35 @@
       cursor: pointer;
       border-radius: 4px;
       border: none;
+      margin-top: 15px;
     }
-    #start-btn {
+    .btn-primary {
       background: #007bff;
       color: white;
     }
-    #start-btn:hover {
+    .btn-primary:hover {
       background: #0056b3;
+    }
+    .btn-danger {
+      background: #cc0000;
+      color: white;
+    }
+    .btn-danger:hover {
+      background: #990000;
+    }
+    section.step {
+      background: #ffffff;
+      border-radius: 6px;
+      padding: 20px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+    iframe {
+      width: 100%;
+      height: 70vh;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
     }
   </style>
 </head>
@@ -71,59 +86,123 @@
 
   <main>
     <div id="wrapper">
+
       <div id="message" class="info">
-        <strong>Instrucciones:</strong>
-        <ul>
-          <li>Al iniciar, el examen aparecerá en esta página.</li>
-          <li>No debes cambiar de pestaña, ventana ni minimizar.</li>
-          <li>La <strong>primera infracción</strong> pedirá un código del profesor.</li>
-          <li>Si el código es correcto, podrás continuar una sola vez.</li>
-          <li>Cualquier infracción después de eso cancelará el examen.</li>
-        </ul>
+        <strong>Bienvenido al examen.</strong>
+        <br>
+        Sigue las instrucciones paso a paso. Las infracciones solo aplican en el tercer paso (examen).
       </div>
 
-      <div id="intro" class="center">
-        <p>Cuando estés listo, haz clic en el siguiente botón para iniciar el examen.</p>
-        <button id="start-btn">Iniciar examen</button>
-      </div>
-
-      <div id="exam-container" class="hidden">
-        <p class="center" id="exam-status">
-          <strong>Examen en curso.</strong> No salgas de esta pestaña, ni cambies de ventana, ni minimices.
+      <!-- PASO 1: Instrucciones generales -->
+      <section id="step1" class="step">
+        <h2>Paso 1: Instrucciones generales</h2>
+        <p>
+          En este examen:
         </p>
-        <!-- AQUÍ VA TU FORMULARIO DE GOOGLE FORMS -->
+        <ul>
+          <li>No debes cambiar de pestaña, ventana ni minimizar mientras respondes el examen.</li>
+          <li>Durante el examen, el sistema detectará si sales de la ventana más de un segundo.</li>
+          <li>La primera vez que ocurra, el profesor puede decidir rehabilitarte con un código.</li>
+          <li>Si ocurre de nuevo, el examen se cancelará automáticamente.</li>
+        </ul>
+        <p>
+          Da clic en el siguiente botón para ir al formulario de registro. Todavía no se aplica ninguna penalización.
+        </p>
+        <div class="center">
+          <button id="btn-step1-next" class="btn-primary">Siguiente: Registro</button>
+        </div>
+      </section>
+
+      <!-- PASO 2: Formulario de registro embebido -->
+      <section id="step2" class="step hidden">
+        <h2>Paso 2: Registro previo</h2>
+        <p>
+          Completa el siguiente formulario de registro (matrícula, nombre, grupo y aceptación del código de ética).
+          Una vez que des clic en <strong>Enviar</strong> en el formulario, regresa aquí y pulsa <strong>Siguiente</strong>.
+        </p>
         <iframe
-          id="exam-frame"
-          src="https://docs.google.com/forms/d/e/1FAIpQLSdNY8t6a8wgaxOrCKfAp1LGvFAEdnuJCr5WPW4lOycLHRgXGw/viewform?usp=dialog"
+          id="registro-frame"
+          src="https://docs.google.com/forms/d/e/1FAIpQLSdNY8t6a8wgaxOrCKfAp1LGvFAEdnuJCr5WPW4lOycLHRgXGw/viewform?embedded=true"
           frameborder="0"
           marginheight="0"
           marginwidth="0"
         >
-          Cargando…
+          Cargando formulario de registro…
         </iframe>
-      </div>
+        <div class="center">
+          <button id="btn-step2-next" class="btn-primary">
+            Siguiente: Iniciar examen
+          </button>
+        </div>
+      </section>
+
+      <!-- PASO 3: Formulario de examen embebido (con infracciones activas) -->
+      <section id="step3" class="step hidden">
+        <h2>Paso 3: Examen</h2>
+        <p id="exam-status" class="center">
+          <strong>Examen en curso.</strong> No salgas de esta pestaña, ni cambies de ventana, ni minimices.
+        </p>
+        <p>
+          Responde el formulario de examen que aparece abajo. Al terminar de contestar en el formulario de Google Forms
+          (botón Enviar dentro del formulario), regresa aquí y da clic en <strong>Finalizar examen</strong>.
+        </p>
+        <iframe
+          id="exam-frame"
+          src="https://docs.google.com/forms/d/e/1FAIpQLSeiIBCLX_ZMesEVRWFLM-RzCTWkScELdgI1m2ZURg91HGzpSQ/viewform?embedded=true"
+          frameborder="0"
+          marginheight="0"
+          marginwidth="0"
+        >
+          Cargando formulario de examen…
+        </iframe>
+        <div class="center">
+          <button id="btn-finish-exam" class="btn-danger">
+            Finalizar examen
+          </button>
+        </div>
+      </section>
+
+      <!-- PASO 4: Mensaje final de examen enviado -->
+      <section id="step4-success" class="step hidden">
+        <h2>Examen enviado</h2>
+        <p>
+          Tu examen ha sido finalizado satisfactoriamente (desde esta plataforma).
+          Asegúrate de que el formulario de Google Forms muestre también su confirmación de envío.
+        </p>
+        <p>
+          Si tienes cualquier duda, levanta la mano y coméntalo con tu profesor.
+        </p>
+      </section>
+
     </div>
   </main>
 
-   <script>
+  <script>
     // 👇 CAMBIA ESTE CÓDIGO POR EL QUE QUIERAS USAR COMO PROFESOR
-    const TEACHER_CODE = "1845";
+    const TEACHER_CODE = "1840";
 
     // Tiempo mínimo fuera antes de contar como infracción (ms)
-    const AWAY_THRESHOLD_MS = 2500; // 2.5 segundos
+    const AWAY_THRESHOLD_MS = 1000; // 1 segundo
 
+    // Estado general
+    let currentStep = 1;
     let examIsActive = false;
     let examCanceled = false;
     let teacherCodeUsed = false;   // true después de la primera infracción perdonada
-    let monitoringActive = false;  // empieza a vigilar después del inicio
+    let monitoringActive = false;  // empieza a vigilar solo en el paso 3
     let awaySince = null;          // momento en que salió de pestaña/ventana
 
-    const startBtn = document.getElementById('start-btn');
-    const introDiv = document.getElementById('intro');
-    const examContainer = document.getElementById('exam-container');
     const messageDiv = document.getElementById('message');
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+    const step4 = document.getElementById('step4-success');
     const examFrame = document.getElementById('exam-frame');
     const examStatusP = document.getElementById('exam-status');
+
+    const btnStep1Next = document.getElementById('btn-step1-next');
+    const btnStep2Next = document.getElementById('btn-step2-next');
+    const btnFinishExam = document.getElementById('btn-finish-exam');
 
     function showMessage(html, type = 'info') {
       messageDiv.innerHTML = html;
@@ -132,28 +211,73 @@
       messageDiv.id = 'message';
     }
 
+    // Cambiar de paso
+    function goToStep(stepNumber) {
+      currentStep = stepNumber;
+
+      // Ocultar todos
+      step1.classList.add('hidden');
+      step2.classList.add('hidden');
+      step3.classList.add('hidden');
+      step4.classList.add('hidden');
+
+      if (stepNumber === 1) {
+        step1.classList.remove('hidden');
+        stopExamMonitoring();
+        showMessage(
+          '<strong>Bienvenido al examen.</strong><br>' +
+          'Sigue las instrucciones del Paso 1. Aún no se aplican infracciones.',
+          'info'
+        );
+      } else if (stepNumber === 2) {
+        step2.classList.remove('hidden');
+        stopExamMonitoring();
+        showMessage(
+          '<strong>Paso 2:</strong> Completa el formulario de registro. ' +
+          'Después de enviarlo, da clic en "Siguiente: Iniciar examen". Aún no se aplican infracciones.',
+          'info'
+        );
+      } else if (stepNumber === 3) {
+        step3.classList.remove('hidden');
+        startExam();
+      } else if (stepNumber === 4) {
+        step4.classList.remove('hidden');
+        stopExamMonitoring();
+        showMessage(
+          '<strong>Examen finalizado.</strong> Si el formulario de Google Forms mostró su confirmación, ' +
+          'tu examen ha quedado registrado.',
+          'info'
+        );
+      }
+    }
+
     function startExam() {
       examIsActive = true;
       examCanceled = false;
-      teacherCodeUsed = false;
+      teacherCodeUsed = false;  // opcional: podrías mantenerlo en true si quieres que cuente desde antes
       monitoringActive = false;
       awaySince = null;
 
-      introDiv.classList.add('hidden');
-      examContainer.classList.remove('hidden');
       examFrame.classList.remove('hidden');
       examStatusP.classList.remove('hidden');
 
       showMessage(
-        '<strong>Examen iniciado.</strong> Permanece en esta pestaña/ventana. ' +
-        'La primera infracción pedirá un código; después de eso, cualquier otra infracción cancelará el examen.',
+        '<strong>Paso 3:</strong> Examen iniciado. Permanece en esta pestaña/ventana. ' +
+        'La primera infracción pedirá un código del profesor; la segunda cancelará el examen.',
         'info'
       );
 
-      // Activar vigilancia después de 1.5 s para evitar falsos positivos al arranque
+      // Activar vigilancia después de 0.5 s para evitar falsos positivos al entrar
       setTimeout(() => {
         monitoringActive = true;
-      }, 1500);
+      }, 500);
+    }
+
+    function stopExamMonitoring() {
+      examIsActive = false;
+      examCanceled = false;
+      monitoringActive = false;
+      awaySince = null;
     }
 
     function cancelExam(reason) {
@@ -163,7 +287,6 @@
       monitoringActive = false;
 
       examFrame.classList.add('hidden');
-      examContainer.classList.add('hidden');
       examStatusP.classList.add('hidden');
 
       showMessage('<strong>Examen cancelado.</strong> ' + reason, 'error');
@@ -199,7 +322,7 @@
       }
     }
 
-    // Marca el momento en que se fue de pestaña/ventana
+    // Marca el momento en que se fue de pestaña/ventana (solo en paso 3)
     function markAway() {
       if (!examIsActive || !monitoringActive) return;
       if (awaySince === null) {
@@ -229,6 +352,9 @@
 
     // 1) Cambio de visibilidad (pestañas)
     document.addEventListener('visibilitychange', () => {
+      // Solo nos interesa cuando ya estamos en el paso 3 (examen)
+      if (currentStep !== 3) return;
+
       if (document.hidden) {
         markAway();
       } else {
@@ -238,14 +364,16 @@
 
     // 2) Cambio de foco de ventana (Alt+Tab, otra ventana, carpetas, etc.)
     window.addEventListener('blur', () => {
+      if (currentStep !== 3) return;
       markAway();
     });
 
     window.addEventListener('focus', () => {
+      if (currentStep !== 3) return;
       markBack('ventana');
     });
 
-    // Aviso si intenta cerrar o recargar
+    // Aviso si intenta cerrar o recargar mientras el examen está activo
     window.addEventListener('beforeunload', (event) => {
       if (examIsActive && !examCanceled) {
         event.preventDefault();
@@ -253,7 +381,25 @@
       }
     });
 
-    startBtn.addEventListener('click', startExam);
+    // Botones de pasos
+    btnStep1Next.addEventListener('click', () => {
+      goToStep(2);
+    });
+
+    btnStep2Next.addEventListener('click', () => {
+      // Aquí confiamos en que el alumno ya envió el Forms de registro
+      goToStep(3);
+    });
+
+    btnFinishExam.addEventListener('click', () => {
+      // Aquí no validamos si envió el Forms; eso lo controla el propio Google Forms
+      examIsActive = false;
+      monitoringActive = false;
+      goToStep(4);
+    });
+
+    // Iniciar en el Paso 1
+    goToStep(1);
   </script>
 </body>
 </html>
