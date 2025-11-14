@@ -78,23 +78,29 @@
     }
 
     /* Overlay de confirmación */
-    #finish-confirm-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-    #finish-confirm-box {
-      background: #ffffff;
-      padding: 20px;
-      border-radius: 8px;
-      max-width: 420px;
-      text-align: center;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
-    }
+   #finish-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Cuando tenga la clase .hidden, sí se oculta */
+#finish-confirm-overlay.hidden {
+  display: none;
+}
+
+#finish-confirm-box {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
   </style>
 </head>
 <body>
