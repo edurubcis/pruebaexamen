@@ -76,6 +76,23 @@
       border-radius: 4px;
       background: #fff;
     }
+    #finish-confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #finish-confirm-box {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
   </style>
 </head>
 <body>
@@ -175,6 +192,22 @@
       </section>
 
     </div>
+     <!-- OVERLAY DE CONFIRMACIÓN AL FINALIZAR -->
+      <div id="finish-confirm-overlay" class="hidden">
+        <div id="finish-confirm-box">
+          <p><strong>¿Estás seguro que ya enviaste el formulario de Google Forms?</strong></p>
+          <p>
+            Verifica que el formulario de examen te haya mostrado el mensaje de
+            <em>"Tus respuestas se han registrado"</em> antes de continuar.
+          </p>
+          <button id="btn-confirm-yes" class="btn-danger">
+            Sí, ya lo envié
+          </button>
+          <button id="btn-confirm-no" class="btn-primary">
+            No, regresar al examen
+          </button>
+        </div>
+      </div>
   </main>
 
   <script>
@@ -205,6 +238,10 @@
     const btnStep1Next = document.getElementById('btn-step1-next');
     const btnStep2Next = document.getElementById('btn-step2-next');
     const btnFinishExam = document.getElementById('btn-finish-exam');
+
+    const finishOverlay = document.getElementById('finish-confirm-overlay');
+    const btnConfirmYes = document.getElementById('btn-confirm-yes');
+    const btnConfirmNo = document.getElementById('btn-confirm-no');
 
     function showMessage(html, type = 'info') {
       messageDiv.innerHTML = html;
@@ -450,14 +487,50 @@
       goToStep(3);
     });
 
-    btnFinishExam.addEventListener('click', () => {
-      // Apagamos completamente el sistema de penalizaciones ANTES de cambiar de pantalla
-      examIsActive = false;
-      monitoringActive = false;
-      penaltyEnabled = false;
-      awaySince = null;
-      goToStep(4);
-    });
+  btnFinishExam.addEventListener('click', () => {
+  // Pausamos completamente el sistema de penalizaciones mientras decide
+  examIsActive = false;
+  monitoringActive = false;
+  penaltyEnabled = false;
+  awaySince = null;
+
+  // Mostramos el cuadro de confirmación
+  finishOverlay.classList.remove('hidden');
+});
+    btnConfirmYes.addEventListener('click', () => {
+  // Ocultamos overlay y vamos a la página final
+  finishOverlay.classList.add('hidden');
+  goToStep(4);
+});
+
+btnConfirmNo.addEventListener('click', () => {
+  // Ocultamos overlay y regresamos al examen
+  finishOverlay.classList.add('hidden');
+
+  // Reactivamos el examen y las penalizaciones, con una pequeña supresión
+  examIsActive = true;
+  examCanceled = false;
+  monitoringActive = true;
+  penaltyEnabled = true;
+  awaySince = null;
+  suppressionUntil = Date.now() + 1500; // 1.5 s de colchón por si hay eventos raros
+
+  // Aseguramos que visualmente siga en el Paso 3
+  currentStep = 3;
+  step1.classList.add('hidden');
+  step2.classList.add('hidden');
+  step3.classList.remove('hidden');
+  step4.classList.add('hidden');
+  examFrame.classList.remove('hidden');
+  examStatusP.classList.remove('hidden');
+
+  showMessage(
+    '<strong>Continúa con tu examen.</strong> Asegúrate de enviar el formulario de Google Forms ' +
+    'antes de volver a presionar "Finalizar examen".',
+    'info'
+  );
+});
+    
 
     // Iniciar en el Paso 1
     goToStep(1);
