@@ -300,33 +300,53 @@
     }
 
     function handleInfraction(reason) {
-      if (!examIsActive || examCanceled || !penaltyEnabled) return;
+  // Si el examen ya no está activo o las penalizaciones están apagadas, no hacemos nada
+  if (!examIsActive || examCanceled || !penaltyEnabled) return;
 
-      // Si ya se usó el código una vez, cualquier infracción cancela
-      if (teacherCodeUsed) {
-        cancelExam(reason + ' (segunda infracción).');
-        return;
-      }
+  // Si ya se usó el código una vez, cualquier nueva infracción cancela
+  if (teacherCodeUsed) {
+    cancelExam(reason + ' (segunda infracción).');
+    return;
+  }
 
-      // Primera vez: permitir usar código
-      const code = prompt(
-        'Se detectó una posible infracción:\n\n' + reason +
-        '\n\nPide a tu profesor el código para continuar. ' +
-        'Si no lo ingresas correctamente, el examen será cancelado.'
-      );
+  // Primera infracción: permitir usar código
+  const code = prompt(
+    'Se detectó una posible infracción:\n\n' + reason +
+    '\n\nPide a tu profesor el código para continuar. ' +
+    'Si no lo ingresas correctamente, el examen será cancelado.'
+  );
 
-      if (code === TEACHER_CODE) {
-        teacherCodeUsed = true;
-        alert('Código correcto. Puedes continuar, pero cualquier nueva infracción cancelará el examen.');
-        showMessage(
-          '<strong>Advertencia:</strong> Ya se detectó una infracción. ' +
-          'Si vuelves a salir de la pestaña/ventana o minimizar, el examen será cancelado.',
-          'error'
-        );
-      } else {
-        cancelExam(reason + ' (código incorrecto o no ingresado).');
-      }
-    }
+  if (code === TEACHER_CODE) {
+    // Código correcto → seguimos en el examen (Paso 3)
+    teacherCodeUsed = true;
+
+    // Reafirmamos el estado del examen por si algo raro cambió
+    examIsActive = true;
+    examCanceled = false;
+    monitoringActive = true;
+    penaltyEnabled = true;
+    awaySince = null;
+
+    // Nos aseguramos visualmente de seguir en el Paso 3
+    currentStep = 3;
+    step1.classList.add('hidden');
+    step2.classList.add('hidden');
+    step3.classList.remove('hidden');
+    step4.classList.add('hidden');
+    examFrame.classList.remove('hidden');
+    examStatusP.classList.remove('hidden');
+
+    alert('Código correcto. Puedes continuar, pero cualquier nueva infracción cancelará el examen.');
+    showMessage(
+      '<strong>Advertencia:</strong> Ya se detectó una infracción. ' +
+      'Si vuelves a salir de la pestaña/ventana o minimizar, el examen será cancelado.',
+      'error'
+    );
+  } else {
+    // Código incorrecto o cancelado
+    cancelExam(reason + ' (código incorrecto o no ingresado).');
+  }
+}
 
     // Marca el momento en que se fue de pestaña/ventana (solo en paso 3)
     function markAway() {
