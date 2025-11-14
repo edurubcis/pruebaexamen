@@ -273,7 +273,7 @@
         stopExamMonitoring();
         showMessage(
           '<strong>Bienvenido al examen.</strong><br>' +
-          'Sigue las instrucciones del Paso 1. Aún no se aplican infracciones.',
+          'Sigue las instrucciones del Paso 1.',
           'info'
         );
       } else if (stepNumber === 2) {
@@ -281,7 +281,7 @@
         stopExamMonitoring();
         showMessage(
           '<strong>Paso 2:</strong> Completa el formulario de registro. ' +
-          'Después de enviarlo, da clic en "Siguiente: Iniciar examen". Aún no se aplican infracciones.',
+          'Después de enviarlo, da clic en "Siguiente: Iniciar examen".',
           'info'
         );
       } else if (stepNumber === 3) {
@@ -312,7 +312,7 @@
 
       showMessage(
         '<strong>Paso 3:</strong> Examen iniciado. Permanece en esta pestaña/ventana. ' +
-        'La primera infracción pedirá un código del profesor; la segunda cancelará el examen.',
+        'La primera infracción pedirá un código del maestro; la segunda cancelará el examen inmediatamente.',
         'info'
       );
 
@@ -366,7 +366,7 @@
       // Primera infracción: permitir usar código
       const code = prompt(
         'Se detectó una posible infracción:\n\n' + reason +
-        '\n\nPide a tu profesor el código para continuar. ' +
+        '\n\nPide a tu maestro el código para continuar. ' +
         'Si no lo ingresas correctamente, el examen será cancelado.'
       );
 
