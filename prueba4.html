@@ -265,6 +265,7 @@
     let penaltyEnabled = false;    // flag extra para evitar penalización al finalizar
     let awaySince = null;          // momento en que salió de pestaña/ventana
     let suppressionUntil = 0;      // ignorar infracciones hasta este momento (ms)
+    let requireFullscreenClick = false; // cuando true, solo se permite hacer clic en el recordatorio
 
     const messageDiv = document.getElementById('message');
     const step1 = document.getElementById('step1');
@@ -303,6 +304,12 @@
       step3.classList.add('hidden');
       step4.classList.add('hidden');
       step5.classList.add('hidden');
+
+      // Al salir de examen, ya no exigimos fullscreen click
+      if (stepNumber !== 3) {
+        requireFullscreenClick = false;
+        if (fullscreenReminder) fullscreenReminder.classList.add('hidden');
+      }
 
       if (stepNumber === 1) {
         step1.classList.remove('hidden');
@@ -372,6 +379,7 @@
       penaltyEnabled = false; // lo activamos después de un breve delay
       awaySince = null;
       suppressionUntil = 0;
+      requireFullscreenClick = false;
 
       examFrame.classList.remove('hidden');
       examStatusP.classList.remove('hidden');
@@ -402,8 +410,10 @@
       penaltyEnabled = false;
       awaySince = null;
       suppressionUntil = 0;
+      requireFullscreenClick = false;
       // Salir de pantalla completa sin castigo
       exitFullscreenSafe();
+      if (fullscreenReminder) fullscreenReminder.classList.add('hidden');
     }
 
     function cancelExam(reason) {
@@ -414,6 +424,7 @@
       penaltyEnabled = false;
       awaySince = null;
       suppressionUntil = 0;
+      requireFullscreenClick = false;
 
       // Ocultamos el examen y cualquier overlay
       examFrame.classList.add('hidden');
@@ -474,6 +485,7 @@
         // Si por políticas del navegador no entra a fullscreen, mostramos el aviso con botón
         if (!document.fullscreenElement && fullscreenReminder) {
           fullscreenReminder.classList.remove('hidden');
+          requireFullscreenClick = true;
         }
 
         // Ignorar posibles eventos de foco/visibilidad inmediatamente después de la rehabilitación
@@ -554,13 +566,32 @@
     }
 
     // EXTRA: cualquier interacción dentro de la página "resetea" un posible awaySince viejo
-    ['click', 'keydown', 'scroll', 'mousemove'].forEach(ev => {
+    ['keydown', 'scroll', 'mousemove'].forEach(ev => {
       document.addEventListener(ev, () => {
         if (examIsActive && monitoringActive && penaltyEnabled) {
           awaySince = null;
         }
       });
     });
+
+    // Bloquear clics fuera del recordatorio cuando se requiere fullscreen
+    document.addEventListener('click', (event) => {
+      if (
+        requireFullscreenClick &&
+        currentStep === 3 &&
+        examIsActive &&
+        !examCanceled &&
+        fullscreenReminder &&
+        !fullscreenReminder.classList.contains('hidden')
+      ) {
+        if (!fullscreenReminder.contains(event.target)) {
+          event.preventDefault();
+          event.stopPropagation();
+          alert('Para continuar con tu examen, primero debes dar clic en "Volver a pantalla completa y continuar".');
+          return false;
+        }
+      }
+    }, true); // captura en fase de captura para bloquear antes que otros handlers
 
     // 1) Cambio de visibilidad (pestañas)
     document.addEventListener('visibilitychange', () => {
@@ -589,8 +620,10 @@
       if (currentStep === 3 && examIsActive && !examCanceled && fullscreenReminder) {
         if (document.fullscreenElement) {
           fullscreenReminder.classList.add('hidden');
+          requireFullscreenClick = false;
         } else {
           fullscreenReminder.classList.remove('hidden');
+          requireFullscreenClick = true;
         }
       }
 
@@ -629,6 +662,7 @@
       penaltyEnabled = false;
       awaySince = null;
       suppressionUntil = 0;
+      requireFullscreenClick = false;
 
       // Mostramos el cuadro de confirmación
       finishOverlay.classList.remove('hidden');
@@ -685,6 +719,7 @@
         requestFullscreenSafe();
         if (document.fullscreenElement && fullscreenReminder) {
           fullscreenReminder.classList.add('hidden');
+          requireFullscreenClick = false;
         }
       });
     }
