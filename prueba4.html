@@ -75,6 +75,18 @@
       border: 1px solid #ccc;
       border-radius: 4px;
       background: #fff;
+      display: block;
+    }
+
+    /* Contenedor para poder poner la capa bloqueadora encima del iframe */
+    .exam-frame-wrapper {
+      position: relative;
+    }
+    #exam-disable-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      background: rgba(0,0,0,0); /* transparente */
     }
 
     /* Overlay de confirmación */
@@ -87,7 +99,6 @@
       justify-content: center;
       z-index: 1000;
     }
-    /* Cuando tenga .hidden, sí se oculta */
     #finish-confirm-overlay.hidden {
       display: none;
     }
@@ -190,15 +201,20 @@
           </button>
         </div>
 
-        <iframe
-          id="exam-frame"
-          src="https://docs.google.com/forms/d/e/1FAIpQLSeiIBCLX_ZMesEVRWFLM-RzCTWkScELdgI1m2ZURg91HGzpSQ/viewform?embedded=true"
-          frameborder="0"
-          marginheight="0"
-          marginwidth="0"
-        >
-          Cargando formulario de examen…
-        </iframe>
+        <div class="exam-frame-wrapper">
+          <iframe
+            id="exam-frame"
+            src="https://docs.google.com/forms/d/e/1FAIpQLSeiIBCLX_ZMesEVRWFLM-RzCTWkScELdgI1m2ZURg91HGzpSQ/viewform?embedded=true"
+            frameborder="0"
+            marginheight="0"
+            marginwidth="0"
+          >
+            Cargando formulario de examen…
+          </iframe>
+          <!-- Capa transparente que bloquea clics sobre el formulario cuando sea necesario -->
+          <div id="exam-disable-overlay" class="hidden"></div>
+        </div>
+
         <div class="center">
           <button id="btn-finish-exam" class="btn-danger">
             Finalizar examen
@@ -265,7 +281,7 @@
     let penaltyEnabled = false;    // flag extra para evitar penalización al finalizar
     let awaySince = null;          // momento en que salió de pestaña/ventana
     let suppressionUntil = 0;      // ignorar infracciones hasta este momento (ms)
-    let requireFullscreenClick = false; // cuando true, solo se permite hacer clic en el recordatorio
+    let requireFullscreenClick = false; // cuando true, bloquea clics en el examen hasta fullscreen
 
     const messageDiv = document.getElementById('message');
     const step1 = document.getElementById('step1');
@@ -287,11 +303,29 @@
     const fullscreenReminder = document.getElementById('fullscreen-reminder');
     const btnResumeFullscreen = document.getElementById('btn-resume-fullscreen');
 
+    const examDisableOverlay = document.getElementById('exam-disable-overlay');
+
     function showMessage(html, type = 'info') {
       messageDiv.innerHTML = html;
       messageDiv.className = '';
       messageDiv.classList.add(type);
       messageDiv.id = 'message';
+    }
+
+    function updateExamOverlay() {
+      if (!examDisableOverlay) return;
+      if (
+        requireFullscreenClick &&
+        currentStep === 3 &&
+        examIsActive &&
+        !examCanceled &&
+        fullscreenReminder &&
+        !fullscreenReminder.classList.contains('hidden')
+      ) {
+        examDisableOverlay.classList.remove('hidden');
+      } else {
+        examDisableOverlay.classList.add('hidden');
+      }
     }
 
     // Cambiar de paso
@@ -305,10 +339,10 @@
       step4.classList.add('hidden');
       step5.classList.add('hidden');
 
-      // Al salir de examen, ya no exigimos fullscreen click
       if (stepNumber !== 3) {
         requireFullscreenClick = false;
         if (fullscreenReminder) fullscreenReminder.classList.add('hidden');
+        updateExamOverlay();
       }
 
       if (stepNumber === 1) {
@@ -386,6 +420,7 @@
       if (fullscreenReminder) {
         fullscreenReminder.classList.add('hidden');
       }
+      updateExamOverlay();
 
       // Intentar entrar en pantalla completa al iniciar el examen
       requestFullscreenSafe();
@@ -411,9 +446,9 @@
       awaySince = null;
       suppressionUntil = 0;
       requireFullscreenClick = false;
-      // Salir de pantalla completa sin castigo
       exitFullscreenSafe();
       if (fullscreenReminder) fullscreenReminder.classList.add('hidden');
+      updateExamOverlay();
     }
 
     function cancelExam(reason) {
@@ -426,43 +461,35 @@
       suppressionUntil = 0;
       requireFullscreenClick = false;
 
-      // Ocultamos el examen y cualquier overlay
       examFrame.classList.add('hidden');
       examStatusP.classList.add('hidden');
       finishOverlay.classList.add('hidden');
 
-      // Salimos de pantalla completa
       exitFullscreenSafe();
 
-      // Vamos al paso 5 (examen cancelado)
       goToStep(5);
 
       alert('Tu examen ha sido cancelado.\n\n' + reason);
     }
 
     function handleInfraction(reason) {
-      // Si el examen ya no está activo o las penalizaciones están apagadas, no hacemos nada
       if (!examIsActive || examCanceled || !penaltyEnabled) return;
 
-      // Pausamos la vigilancia mientras se maneja esta infracción
       monitoringActive = false;
       penaltyEnabled = false;
       awaySince = null;
 
-      // Si ya se usó el código una vez, cualquier nueva infracción cancela
       if (teacherCodeUsed) {
         cancelExam(reason + ' (segunda infracción).');
         return;
       }
 
-      // ---- FUNCIÓN AUXILIAR: qué pasa si el código es correcto ----
       function resumeExamAfterValidCode() {
-        teacherCodeUsed = true;      // ya se usó el "salvavidas"
+        teacherCodeUsed = true;
         examIsActive = true;
         examCanceled = false;
         awaySince = null;
 
-        // Volvemos visualmente al Paso 3
         currentStep = 3;
         step1.classList.add('hidden');
         step2.classList.add('hidden');
@@ -479,19 +506,19 @@
           'error'
         );
 
-        // Intentamos entrar a pantalla completa automáticamente
         requestFullscreenSafe();
 
-        // Si por políticas del navegador no entra a fullscreen, mostramos el aviso con botón
         if (!document.fullscreenElement && fullscreenReminder) {
           fullscreenReminder.classList.remove('hidden');
           requireFullscreenClick = true;
+        } else {
+          requireFullscreenClick = false;
+          if (fullscreenReminder) fullscreenReminder.classList.add('hidden');
         }
+        updateExamOverlay();
 
-        // Ignorar posibles eventos de foco/visibilidad inmediatamente después de la rehabilitación
-        suppressionUntil = Date.now() + 2000; // 2 segundos de colchón
+        suppressionUntil = Date.now() + 2000;
 
-        // Re-activamos la vigilancia con un pequeño delay
         setTimeout(() => {
           if (!examCanceled && examIsActive) {
             monitoringActive = true;
@@ -501,7 +528,6 @@
         }, 500);
       }
 
-      // ---- PRIMER INTENTO DE CÓDIGO ----
       const code1 = prompt(
         'Se detectó una posible infracción:\n\n' + reason +
         '\n\nPide a tu profesor el código para continuar. ' +
@@ -509,12 +535,10 @@
       );
 
       if (code1 === TEACHER_CODE) {
-        // Código correcto al primer intento
         resumeExamAfterValidCode();
         return;
       }
 
-      // ---- SEGUNDO INTENTO DE CÓDIGO ----
       const code2 = prompt(
         'Código incorrecto.\n\nIntenta nuevamente.\n\n' +
         'Pide a tu profesor el código para continuar. ' +
@@ -522,15 +546,12 @@
       );
 
       if (code2 === TEACHER_CODE) {
-        // Código correcto al segundo intento
         resumeExamAfterValidCode();
       } else {
-        // Dos intentos fallidos → cancelar examen
         cancelExam(reason + ' (código incorrecto en dos intentos).');
       }
     }
 
-    // Marca el momento en que se fue de pestaña/ventana (solo en paso 3)
     function markAway() {
       if (!examIsActive || !monitoringActive || !penaltyEnabled) return;
       if (awaySince === null) {
@@ -538,19 +559,15 @@
       }
     }
 
-    // Calcula cuánto tiempo estuvo fuera y, si pasa el umbral, cuenta infracción
     function markBack(source) {
       if (!examIsActive || !monitoringActive || !penaltyEnabled) {
         awaySince = null;
         return;
       }
-
-      // Ignorar eventos “fantasma” justo después de una rehabilitación
       if (Date.now() < suppressionUntil) {
         awaySince = null;
         return;
       }
-
       if (awaySince === null) return;
 
       const elapsed = Date.now() - awaySince;
@@ -565,7 +582,6 @@
       }
     }
 
-    // EXTRA: cualquier interacción dentro de la página "resetea" un posible awaySince viejo
     ['keydown', 'scroll', 'mousemove'].forEach(ev => {
       document.addEventListener(ev, () => {
         if (examIsActive && monitoringActive && penaltyEnabled) {
@@ -574,26 +590,24 @@
       });
     });
 
-    // Bloquear clics fuera del recordatorio cuando se requiere fullscreen
-    document.addEventListener('click', (event) => {
-      if (
-        requireFullscreenClick &&
-        currentStep === 3 &&
-        examIsActive &&
-        !examCanceled &&
-        fullscreenReminder &&
-        !fullscreenReminder.classList.contains('hidden')
-      ) {
-        if (!fullscreenReminder.contains(event.target)) {
+    // Bloquear clics directamente sobre el formulario cuando se requiere fullscreen
+    if (examDisableOverlay) {
+      examDisableOverlay.addEventListener('click', (event) => {
+        if (
+          requireFullscreenClick &&
+          currentStep === 3 &&
+          examIsActive &&
+          !examCanceled &&
+          fullscreenReminder &&
+          !fullscreenReminder.classList.contains('hidden')
+        ) {
           event.preventDefault();
           event.stopPropagation();
           alert('Para continuar con tu examen, primero debes dar clic en "Volver a pantalla completa y continuar".');
-          return false;
         }
-      }
-    }, true); // captura en fase de captura para bloquear antes que otros handlers
+      });
+    }
 
-    // 1) Cambio de visibilidad (pestañas)
     document.addEventListener('visibilitychange', () => {
       if (currentStep !== 3) return;
       if (document.hidden) {
@@ -603,7 +617,6 @@
       }
     });
 
-    // 2) Cambio de foco de ventana (Alt+Tab, otra ventana, carpetas, etc.)
     window.addEventListener('blur', () => {
       if (currentStep !== 3) return;
       markAway();
@@ -614,30 +627,23 @@
       markBack('ventana');
     });
 
-    // 3) Salir de pantalla completa cuenta como infracción durante el examen
     document.addEventListener('fullscreenchange', () => {
-      // Mostrar/ocultar recordatorio según fullscreen, mientras el examen está activo
       if (currentStep === 3 && examIsActive && !examCanceled && fullscreenReminder) {
         if (document.fullscreenElement) {
           fullscreenReminder.classList.add('hidden');
           requireFullscreenClick = false;
-        } else {
-          fullscreenReminder.classList.remove('hidden');
-          requireFullscreenClick = true;
+          updateExamOverlay();
         }
       }
 
-      // Lógica de penalización
       if (currentStep !== 3) return;
       if (!examIsActive || examCanceled || !monitoringActive || !penaltyEnabled) return;
 
-      // Si fullscreenElement es null, se salió de pantalla completa
       if (!document.fullscreenElement) {
         handleInfraction('Se salió del modo de pantalla completa durante el examen.');
       }
     });
 
-    // Aviso si intenta cerrar o recargar mientras el examen está activo
     window.addEventListener('beforeunload', (event) => {
       if (examIsActive && !examCanceled) {
         event.preventDefault();
@@ -645,55 +651,46 @@
       }
     });
 
-    // Botones de pasos
     btnStep1Next.addEventListener('click', () => {
       goToStep(2);
     });
 
     btnStep2Next.addEventListener('click', () => {
-      // Aquí confiamos en que el alumno ya envió el Forms de registro
       goToStep(3);
     });
 
     btnFinishExam.addEventListener('click', () => {
-      // Pausamos completamente el sistema de penalizaciones mientras decide
       examIsActive = false;
       monitoringActive = false;
       penaltyEnabled = false;
       awaySince = null;
       suppressionUntil = 0;
       requireFullscreenClick = false;
+      updateExamOverlay();
 
-      // Mostramos el cuadro de confirmación
       finishOverlay.classList.remove('hidden');
     });
 
-    // Lógica de confirmación final
     btnConfirmYes.addEventListener('click', () => {
-      // Ocultamos overlay y vamos a la página final
       finishOverlay.classList.add('hidden');
       goToStep(4);
     });
 
     btnConfirmNo.addEventListener('click', () => {
-      // Ocultamos overlay
       finishOverlay.classList.add('hidden');
 
-      // Si el examen ya fue cancelado, NO se puede regresar
       if (examCanceled) {
         goToStep(5);
         return;
       }
 
-      // Reactivamos el examen y las penalizaciones, con una pequeña supresión
       examIsActive = true;
       examCanceled = false;
       monitoringActive = true;
       penaltyEnabled = true;
       awaySince = null;
-      suppressionUntil = Date.now() + 1500; // 1.5 s de colchón
+      suppressionUntil = Date.now() + 1500;
 
-      // Aseguramos que visualmente siga en el Paso 3
       currentStep = 3;
       step1.classList.add('hidden');
       step2.classList.add('hidden');
@@ -709,22 +706,20 @@
         'info'
       );
 
-      // Volvemos a intentar pantalla completa por si el alumno la quitó
       requestFullscreenSafe();
     });
 
-    // Botón para volver a fullscreen después de una infracción si el navegador bloqueó el intento automático
     if (btnResumeFullscreen) {
       btnResumeFullscreen.addEventListener('click', () => {
         requestFullscreenSafe();
         if (document.fullscreenElement && fullscreenReminder) {
           fullscreenReminder.classList.add('hidden');
           requireFullscreenClick = false;
+          updateExamOverlay();
         }
       });
     }
 
-    // Iniciar en el Paso 1
     goToStep(1);
   </script>
 </body>
