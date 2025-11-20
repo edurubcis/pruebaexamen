@@ -405,69 +405,89 @@
     }
 
     function handleInfraction(reason) {
-      // Si el examen ya no está activo o las penalizaciones están apagadas, no hacemos nada
-      if (!examIsActive || examCanceled || !penaltyEnabled) return;
+  // Si el examen ya no está activo o las penalizaciones están apagadas, no hacemos nada
+  if (!examIsActive || examCanceled || !penaltyEnabled) return;
 
-      // Pausamos la vigilancia mientras se maneja esta infracción
-      monitoringActive = false;
-      penaltyEnabled = false;
-      awaySince = null;
+  // Pausamos la vigilancia mientras se maneja esta infracción
+  monitoringActive = false;
+  penaltyEnabled = false;
+  awaySince = null;
 
-      // Si ya se usó el código una vez, cualquier nueva infracción cancela
-      if (teacherCodeUsed) {
-        cancelExam(reason + ' (segunda infracción).');
-        return;
-      }
+  // Si ya se usó el código una vez, cualquier nueva infracción cancela
+  if (teacherCodeUsed) {
+    cancelExam(reason + ' (segunda infracción).');
+    return;
+  }
 
-      // Primera infracción: permitir usar código
-      const code = prompt(
-        'Se detectó una posible infracción:\n\n' + reason +
-        '\n\nPide a tu profesor el código para continuar. ' +
-        'Si no lo ingresas correctamente, el examen será cancelado.'
-      );
+  // ---- FUNCIÓN AUXILIAR: qué pasa si el código es correcto ----
+  function resumeExamAfterValidCode() {
+    teacherCodeUsed = true;      // ya se usó el "salvavidas"
+    examIsActive = true;
+    examCanceled = false;
+    awaySince = null;
 
-      if (code === TEACHER_CODE) {
-        // Código correcto → seguimos en el examen (Paso 3)
-        teacherCodeUsed = true;
+    // Volvemos visualmente al Paso 3
+    currentStep = 3;
+    step1.classList.add('hidden');
+    step2.classList.add('hidden');
+    step3.classList.remove('hidden');
+    step4.classList.add('hidden');
+    step5.classList.add('hidden');
+    examFrame.classList.remove('hidden');
+    examStatusP.classList.remove('hidden');
 
-        // Reafirmamos el estado del examen
-        examIsActive = true;
-        examCanceled = false;
+    alert('Código correcto. Puedes continuar, pero cualquier nueva infracción cancelará el examen.');
+    showMessage(
+      '<strong>Advertencia:</strong> Ya se detectó una infracción. ' +
+      'Si vuelves a salir de la pestaña/ventana, minimizar o salir de pantalla completa, el examen será cancelado.',
+      'error'
+    );
+
+    // Re-intentar entrar a pantalla completa tras la rehabilitación
+    requestFullscreenSafe();
+
+    // Ignorar posibles eventos de foco/visibilidad inmediatamente después de la rehabilitación
+    suppressionUntil = Date.now() + 2000; // 2 segundos de colchón
+
+    // Re-activamos la vigilancia con un pequeño delay
+    setTimeout(() => {
+      if (!examCanceled && examIsActive) {
+        monitoringActive = true;
+        penaltyEnabled = true;
         awaySince = null;
-
-        // Nos aseguramos visualmente de seguir en el Paso 3
-        currentStep = 3;
-        step1.classList.add('hidden');
-        step2.classList.add('hidden');
-        step3.classList.remove('hidden');
-        step4.classList.add('hidden');
-        step5.classList.add('hidden');
-        examFrame.classList.remove('hidden');
-        examStatusP.classList.remove('hidden');
-
-        alert('Código correcto. Puedes continuar, pero cualquier nueva infracción cancelará el examen.');
-        showMessage(
-          '<strong>Advertencia:</strong> Ya se detectó una infracción. ' +
-          'Si vuelves a salir de la pestaña/ventana, minimizar o salir de pantalla completa, el examen será cancelado.',
-          'error'
-        );
-
-        // Ignorar posibles eventos de foco/visibilidad inmediatamente después de la rehabilitación
-        suppressionUntil = Date.now() + 2000; // 2 segundos de colchón
-
-        // Re-activamos la vigilancia con un pequeño delay
-        setTimeout(() => {
-          if (!examCanceled && examIsActive) {
-            monitoringActive = true;
-            penaltyEnabled = true;
-            awaySince = null;
-          }
-        }, 500);
-      } else {
-        // Código incorrecto o cancelado
-        cancelExam(reason + ' (código incorrecto o no ingresado).');
       }
-    }
+    }, 500);
+  }
+
+  // ---- PRIMER INTENTO DE CÓDIGO ----
+  const code1 = prompt(
+    'Se detectó una posible infracción:\n\n' + reason +
+    '\n\nPide a tu profesor el código para continuar. ' +
+    'Si lo ingresas incorrecto DOS veces, el examen será cancelado.'
+  );
+
+  if (code1 === TEACHER_CODE) {
+    // Código correcto al primer intento
+    resumeExamAfterValidCode();
+    return;
+  }
+
+  // ---- SEGUNDO INTENTO DE CÓDIGO ----
+  const code2 = prompt(
+    'Código incorrecto.\n\nIntenta nuevamente.\n\n' +
+    'Pide a tu profesor el código para continuar. ' +
+    'Si lo ingresas incorrecto otra vez, el examen será cancelado.'
+  );
+
+  if (code2 === TEACHER_CODE) {
+    // Código correcto al segundo intento
+    resumeExamAfterValidCode();
+  } else {
+    // Dos intentos fallidos → cancelar examen
+    cancelExam(reason + ' (código incorrecto en dos intentos).');
+  }
+}
+
 
     // Marca el momento en que se fue de pestaña/ventana (solo en paso 3)
     function markAway() {
