@@ -99,6 +99,15 @@
       text-align: center;
       box-shadow: 0 0 10px rgba(0,0,0,0.3);
     }
+
+    /* Aviso para volver a pantalla completa */
+    #fullscreen-reminder {
+      margin: 10px 0 20px;
+      padding: 10px;
+      border-radius: 6px;
+      background: #fff8e1;
+      border: 1px solid #ffcc80;
+    }
   </style>
 </head>
 <body>
@@ -171,6 +180,16 @@
           Responde el formulario de examen que aparece abajo. Al terminar de contestar en el formulario de Google Forms
           (botón Enviar dentro del formulario), regresa aquí y da clic en <strong>Finalizar examen</strong>.
         </p>
+
+        <div id="fullscreen-reminder" class="hidden center">
+          <p>
+            Para continuar el examen, es necesario estar en <strong>pantalla completa</strong>.
+          </p>
+          <button id="btn-resume-fullscreen" class="btn-primary">
+            Volver a pantalla completa y continuar
+          </button>
+        </div>
+
         <iframe
           id="exam-frame"
           src="https://docs.google.com/forms/d/e/1FAIpQLSeiIBCLX_ZMesEVRWFLM-RzCTWkScELdgI1m2ZURg91HGzpSQ/viewform?embedded=true"
@@ -264,6 +283,9 @@
     const btnConfirmYes = document.getElementById('btn-confirm-yes');
     const btnConfirmNo = document.getElementById('btn-confirm-no');
 
+    const fullscreenReminder = document.getElementById('fullscreen-reminder');
+    const btnResumeFullscreen = document.getElementById('btn-resume-fullscreen');
+
     function showMessage(html, type = 'info') {
       messageDiv.innerHTML = html;
       messageDiv.className = '';
@@ -353,6 +375,9 @@
 
       examFrame.classList.remove('hidden');
       examStatusP.classList.remove('hidden');
+      if (fullscreenReminder) {
+        fullscreenReminder.classList.add('hidden');
+      }
 
       // Intentar entrar en pantalla completa al iniciar el examen
       requestFullscreenSafe();
@@ -405,89 +430,93 @@
     }
 
     function handleInfraction(reason) {
-  // Si el examen ya no está activo o las penalizaciones están apagadas, no hacemos nada
-  if (!examIsActive || examCanceled || !penaltyEnabled) return;
+      // Si el examen ya no está activo o las penalizaciones están apagadas, no hacemos nada
+      if (!examIsActive || examCanceled || !penaltyEnabled) return;
 
-  // Pausamos la vigilancia mientras se maneja esta infracción
-  monitoringActive = false;
-  penaltyEnabled = false;
-  awaySince = null;
+      // Pausamos la vigilancia mientras se maneja esta infracción
+      monitoringActive = false;
+      penaltyEnabled = false;
+      awaySince = null;
 
-  // Si ya se usó el código una vez, cualquier nueva infracción cancela
-  if (teacherCodeUsed) {
-    cancelExam(reason + ' (segunda infracción).');
-    return;
-  }
-
-  // ---- FUNCIÓN AUXILIAR: qué pasa si el código es correcto ----
-  function resumeExamAfterValidCode() {
-    teacherCodeUsed = true;      // ya se usó el "salvavidas"
-    examIsActive = true;
-    examCanceled = false;
-    awaySince = null;
-
-    // Volvemos visualmente al Paso 3
-    currentStep = 3;
-    step1.classList.add('hidden');
-    step2.classList.add('hidden');
-    step3.classList.remove('hidden');
-    step4.classList.add('hidden');
-    step5.classList.add('hidden');
-    examFrame.classList.remove('hidden');
-    examStatusP.classList.remove('hidden');
-
-    alert('Código correcto. Puedes continuar, pero cualquier nueva infracción cancelará el examen.');
-    showMessage(
-      '<strong>Advertencia:</strong> Ya se detectó una infracción. ' +
-      'Si vuelves a salir de la pestaña/ventana, minimizar o salir de pantalla completa, el examen será cancelado.',
-      'error'
-    );
-
-    // Re-intentar entrar a pantalla completa tras la rehabilitación
-    requestFullscreenSafe();
-
-    // Ignorar posibles eventos de foco/visibilidad inmediatamente después de la rehabilitación
-    suppressionUntil = Date.now() + 2000; // 2 segundos de colchón
-
-    // Re-activamos la vigilancia con un pequeño delay
-    setTimeout(() => {
-      if (!examCanceled && examIsActive) {
-        monitoringActive = true;
-        penaltyEnabled = true;
-        awaySince = null;
+      // Si ya se usó el código una vez, cualquier nueva infracción cancela
+      if (teacherCodeUsed) {
+        cancelExam(reason + ' (segunda infracción).');
+        return;
       }
-    }, 500);
-  }
 
-  // ---- PRIMER INTENTO DE CÓDIGO ----
-  const code1 = prompt(
-    'Se detectó una posible infracción:\n\n' + reason +
-    '\n\nPide a tu profesor el código para continuar. ' +
-    'Si lo ingresas incorrecto DOS veces, el examen será cancelado.'
-  );
+      // ---- FUNCIÓN AUXILIAR: qué pasa si el código es correcto ----
+      function resumeExamAfterValidCode() {
+        teacherCodeUsed = true;      // ya se usó el "salvavidas"
+        examIsActive = true;
+        examCanceled = false;
+        awaySince = null;
 
-  if (code1 === TEACHER_CODE) {
-    // Código correcto al primer intento
-    resumeExamAfterValidCode();
-    return;
-  }
+        // Volvemos visualmente al Paso 3
+        currentStep = 3;
+        step1.classList.add('hidden');
+        step2.classList.add('hidden');
+        step3.classList.remove('hidden');
+        step4.classList.add('hidden');
+        step5.classList.add('hidden');
+        examFrame.classList.remove('hidden');
+        examStatusP.classList.remove('hidden');
 
-  // ---- SEGUNDO INTENTO DE CÓDIGO ----
-  const code2 = prompt(
-    'Código incorrecto.\n\nIntenta nuevamente.\n\n' +
-    'Pide a tu profesor el código para continuar. ' +
-    'Si lo ingresas incorrecto otra vez, el examen será cancelado.'
-  );
+        alert('Código correcto. Puedes continuar, pero cualquier nueva infracción cancelará el examen.');
+        showMessage(
+          '<strong>Advertencia:</strong> Ya se detectó una infracción. ' +
+          'Si vuelves a salir de la pestaña/ventana, minimizar o salir de pantalla completa, el examen será cancelado.',
+          'error'
+        );
 
-  if (code2 === TEACHER_CODE) {
-    // Código correcto al segundo intento
-    resumeExamAfterValidCode();
-  } else {
-    // Dos intentos fallidos → cancelar examen
-    cancelExam(reason + ' (código incorrecto en dos intentos).');
-  }
-}
+        // Intentamos entrar a pantalla completa automáticamente
+        requestFullscreenSafe();
 
+        // Si por políticas del navegador no entra a fullscreen, mostramos el aviso con botón
+        if (!document.fullscreenElement && fullscreenReminder) {
+          fullscreenReminder.classList.remove('hidden');
+        }
+
+        // Ignorar posibles eventos de foco/visibilidad inmediatamente después de la rehabilitación
+        suppressionUntil = Date.now() + 2000; // 2 segundos de colchón
+
+        // Re-activamos la vigilancia con un pequeño delay
+        setTimeout(() => {
+          if (!examCanceled && examIsActive) {
+            monitoringActive = true;
+            penaltyEnabled = true;
+            awaySince = null;
+          }
+        }, 500);
+      }
+
+      // ---- PRIMER INTENTO DE CÓDIGO ----
+      const code1 = prompt(
+        'Se detectó una posible infracción:\n\n' + reason +
+        '\n\nPide a tu profesor el código para continuar. ' +
+        'Si lo ingresas incorrecto DOS veces, el examen será cancelado.'
+      );
+
+      if (code1 === TEACHER_CODE) {
+        // Código correcto al primer intento
+        resumeExamAfterValidCode();
+        return;
+      }
+
+      // ---- SEGUNDO INTENTO DE CÓDIGO ----
+      const code2 = prompt(
+        'Código incorrecto.\n\nIntenta nuevamente.\n\n' +
+        'Pide a tu profesor el código para continuar. ' +
+        'Si lo ingresas incorrecto otra vez, el examen será cancelado.'
+      );
+
+      if (code2 === TEACHER_CODE) {
+        // Código correcto al segundo intento
+        resumeExamAfterValidCode();
+      } else {
+        // Dos intentos fallidos → cancelar examen
+        cancelExam(reason + ' (código incorrecto en dos intentos).');
+      }
+    }
 
     // Marca el momento en que se fue de pestaña/ventana (solo en paso 3)
     function markAway() {
@@ -556,6 +585,16 @@
 
     // 3) Salir de pantalla completa cuenta como infracción durante el examen
     document.addEventListener('fullscreenchange', () => {
+      // Mostrar/ocultar recordatorio según fullscreen, mientras el examen está activo
+      if (currentStep === 3 && examIsActive && !examCanceled && fullscreenReminder) {
+        if (document.fullscreenElement) {
+          fullscreenReminder.classList.add('hidden');
+        } else {
+          fullscreenReminder.classList.remove('hidden');
+        }
+      }
+
+      // Lógica de penalización
       if (currentStep !== 3) return;
       if (!examIsActive || examCanceled || !monitoringActive || !penaltyEnabled) return;
 
@@ -639,6 +678,16 @@
       // Volvemos a intentar pantalla completa por si el alumno la quitó
       requestFullscreenSafe();
     });
+
+    // Botón para volver a fullscreen después de una infracción si el navegador bloqueó el intento automático
+    if (btnResumeFullscreen) {
+      btnResumeFullscreen.addEventListener('click', () => {
+        requestFullscreenSafe();
+        if (document.fullscreenElement && fullscreenReminder) {
+          fullscreenReminder.classList.add('hidden');
+        }
+      });
+    }
 
     // Iniciar en el Paso 1
     goToStep(1);
