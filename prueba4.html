@@ -87,7 +87,7 @@
       justify-content: center;
       z-index: 1000;
     }
-    /* MUY IMPORTANTE: al tener .hidden, sí se oculta */
+    /* Cuando tenga .hidden, sí se oculta */
     #finish-confirm-overlay.hidden {
       display: none;
     }
@@ -164,7 +164,8 @@
       <section id="step3" class="step hidden">
         <h2>Paso 3: Examen</h2>
         <p id="exam-status" class="center">
-          <strong>Examen en curso.</strong> No salgas de esta pestaña, ni cambies de ventana, ni minimices, ni salgas de pantalla completa.
+          <strong>Examen en curso.</strong> No salgas de esta pestaña, ni cambies de ventana, ni minimices,
+          ni salgas de pantalla completa.
         </p>
         <p>
           Responde el formulario de examen que aparece abajo. Al terminar de contestar en el formulario de Google Forms
@@ -230,7 +231,7 @@
   </main>
 
   <script>
-    // 👇 Código del profesor para rehabilitar una sola vez
+    // 👇 Código del profesor para rehabilitar (una sola vez)
     const TEACHER_CODE = "0000";
 
     // Tiempo mínimo fuera antes de contar como infracción (ms)
